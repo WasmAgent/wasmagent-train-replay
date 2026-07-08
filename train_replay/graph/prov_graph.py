@@ -72,11 +72,15 @@ class ProvGraph:
             if node in seen:
                 continue
             seen.add(node)
-            for pred in self._g.predecessors(node):
-                data = self._g.nodes[pred]
+            # Edges are stored in PROV-DM statement direction (subject -> object),
+            # i.e. effect -> cause for both 'used' (activity -> entity) and
+            # 'wasGeneratedBy' (entity -> activity). A causal ancestor (the cause)
+            # is therefore reached by following successors, not predecessors.
+            for succ in self._g.successors(node):
+                data = self._g.nodes[succ]
                 if data.get("kind") == "activity":
-                    visited.append(pred)
-                queue.append(pred)
+                    visited.append(succ)
+                queue.append(succ)
         return visited
 
     def causal_subgraph(self, entity_id: str) -> "ProvGraph":
