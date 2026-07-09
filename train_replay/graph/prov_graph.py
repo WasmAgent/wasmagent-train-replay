@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 from dataclasses import dataclass
 
 import networkx as nx
@@ -90,7 +91,7 @@ class ProvGraph:
         return new
 
     def nodes(self) -> Iterator[tuple[str, dict[str, Any]]]:
-        return self._g.nodes(data=True)
+        return self._g.nodes(data=True)  # type: ignore[return-value]
 
     def to_dict(self) -> dict[str, Any]:
-        return nx.node_link_data(self._g)
+        return nx.node_link_data(self._g)  # type: ignore[return-value]
