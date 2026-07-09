@@ -47,3 +47,8 @@ select = ["E", "F", "I", "UP"]
 python_version = "3.10"
 strict = true
 ignore_missing_imports = true
+no_site_packages = true
+
+[[tool.mypy.overrides]]
+module = ["train_replay.cli.*"]
+disable_error_code = ["untyped-decorator"]

@@ -18,6 +18,7 @@ class ProvActivity:
     process_group: str
     timestamp_ns: int
     collective_type: str
+    importance_score: float = 0.0
 
 
 @dataclass
@@ -27,6 +28,7 @@ class ProvEntity:
     digest: str | None
     rank: int
     step: int
+    importance_score: float = 0.0
 
 
 @dataclass
@@ -99,3 +101,72 @@ class ProvGraph:
 
     def to_dict(self) -> dict[str, Any]:
         return nx.node_link_data(self._g)  # type: ignore[no-any-return]
+
+    def compute_importance_scores(
+        self,
+        anomalous_node_ids: set[str] | None = None,
+        anomaly_boost: float = 0.5,
+    ) -> None:
+        """Compute MemRL-style importance scores for all nodes.
+
+        Base score = number of causal descendants / total nodes (connectivity ratio).
+        Nodes that are ancestors of anomalous events receive a boost.
+
+        Mirrors the Intent-Experience-Utility triple from MemRL (arXiv:2601.03192).
+        """
+        if not self._g.nodes():
+            return
+
+        total_nodes = len(self._g.nodes())
+        anomalous_set = anomalous_node_ids or set()
+
+        # Precompute causal descendants for all nodes.
+        # PROV-DM edges go effect -> cause, so causal descendants (cause -> effect)
+        # are reached by following predecessors in the graph (nx.ancestors).
+        descendants_map: dict[str, set[str]] = {}
+        for node_id in self._g.nodes():
+            descendants_map[node_id] = set(nx.ancestors(self._g, node_id))
+            descendants_map[node_id].add(node_id)
+
+        # Compute base connectivity score.
+        for node_id in self._g.nodes():
+            desc_count = len(descendants_map[node_id])
+            base_score = desc_count / total_nodes if total_nodes > 0 else 0.0
+            node_data = self._g.nodes[node_id]["data"]
+            node_data.importance_score = base_score
+
+        # Boost ancestors of anomalous nodes.
+        if anomalous_set:
+            for anom_id in anomalous_set:
+                if anom_id not in self._g:
+                    continue
+                # Ancestors of the anomalous node (causes).
+                for ancestor_id in self.ancestors_of(anom_id):
+                    if ancestor_id in self._g:
+                        ancestor_data = self._g.nodes[ancestor_id]["data"]
+                        if hasattr(ancestor_data, "importance_score"):
+                            ancestor_data.importance_score = min(
+                                ancestor_data.importance_score + anomaly_boost, 1.0
+                            )
+                # The anomalous node itself also gets a boost.
+                if anom_id in self._g:
+                    anom_data = self._g.nodes[anom_id]["data"]
+                    if hasattr(anom_data, "importance_score"):
+                        anom_data.importance_score = min(
+                            anom_data.importance_score + anomaly_boost, 1.0
+                        )
+
+    def get_high_importance_nodes(
+        self, threshold: float = 0.5
+    ) -> list[tuple[str, float]]:
+        """Return nodes with importance_score >= threshold, sorted descending.
+
+        Returns list of (node_id, score) tuples.
+        """
+        results: list[tuple[str, float]] = []
+        for node_id, attrs in self._g.nodes(data=True):
+            data = attrs["data"]
+            if hasattr(data, "importance_score") and data.importance_score >= threshold:
+                results.append((node_id, data.importance_score))
+        results.sort(key=lambda x: x[1], reverse=True)
+        return results

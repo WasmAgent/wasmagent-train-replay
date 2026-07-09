@@ -45,4 +45,5 @@ def build_from_events(events: list[CollectiveEvent]) -> ProvGraph:
         )
         graph.was_generated_by(out_ent_id, act_id)
 
+    graph.compute_importance_scores()
     return graph

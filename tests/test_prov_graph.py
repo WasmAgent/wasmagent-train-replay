@@ -92,3 +92,73 @@ def test_ancestors_traversal_direction() -> None:
     )
     # entity_0 is not an activity, should never appear in ancestors
     assert "entity_0" not in ancestors
+
+
+def test_importance_score_leaf_lower_than_hub() -> None:
+    """Leaf nodes should have lower importance scores than hub nodes.
+
+    In the multi-hop chain: entity_2 -> act_2 -> entity_1 -> act_1 -> entity_0
+    act_1 is a hub (causally contributes to entity_2, entity_1, act_2, entity_0, act_1)
+    while entity_2 is a leaf (only contributes to itself).
+    """
+    g = _make_multi_hop_graph()
+    g.compute_importance_scores()
+
+    hub_score = g._g.nodes["act_1"]["data"].importance_score
+    leaf_score = g._g.nodes["entity_2"]["data"].importance_score
+    assert hub_score > leaf_score, (
+        f"Hub node act_1 (score={hub_score}) should have higher importance "
+        f"than leaf node entity_2 (score={leaf_score})"
+    )
+
+
+def test_get_high_importance_nodes_returns_filtered() -> None:
+    """get_high_importance_nodes(threshold=0.5) returns only nodes >= threshold."""
+    g = _make_multi_hop_graph()
+    g.compute_importance_scores()
+
+    high = g.get_high_importance_nodes(threshold=0.5)
+    assert isinstance(high, list)
+    # All returned scores must meet threshold
+    for node_id, score in high:
+        assert score >= 0.5, f"Node {node_id} has score {score} < 0.5"
+    # Results should be sorted descending
+    if len(high) > 1:
+        for i in range(len(high) - 1):
+            assert high[i][1] >= high[i + 1][1]
+
+
+def test_get_high_importance_nodes_empty_graph() -> None:
+    """get_high_importance_nodes on empty graph returns empty list."""
+    g = ProvGraph()
+    g.compute_importance_scores()
+    assert g.get_high_importance_nodes(threshold=0.5) == []
+
+
+def test_importance_anomaly_boost() -> None:
+    """Nodes ancestral to anomalous events receive a boost."""
+    g = _make_multi_hop_graph()
+    g.compute_importance_scores()
+
+    base_score_act1 = g._g.nodes["act_1"]["data"].importance_score
+
+    # Re-compute with entity_2 marked as anomalous
+    g.compute_importance_scores(anomalous_node_ids={"entity_2"})
+    boosted_score_act1 = g._g.nodes["act_1"]["data"].importance_score
+
+    assert boosted_score_act1 > base_score_act1, (
+        f"Ancestor act_1 should be boosted after marking entity_2 anomalous: "
+        f"{boosted_score_act1} vs {base_score_act1}"
+    )
+
+
+def test_importance_scores_capped_at_one() -> None:
+    """Importance scores must not exceed 1.0."""
+    g = _make_multi_hop_graph()
+    g.compute_importance_scores(anomalous_node_ids={"entity_2", "entity_1", "entity_0"})
+    for node_id, attrs in g._g.nodes(data=True):
+        data = attrs["data"]
+        if hasattr(data, "importance_score"):
+            assert data.importance_score <= 1.0, (
+                f"Node {node_id} has score {data.importance_score} > 1.0"
+            )
