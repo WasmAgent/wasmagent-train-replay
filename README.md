@@ -81,7 +81,7 @@ The [`docs/`](docs/) directory holds the full reference:
 | Document | What it covers |
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | System flow, component responsibilities, the PROV-DM data model, recording policy, and Ed25519 signing. |
-| [docs/protocol.md](docs/protocol.md) | Field-by-field schemas for `EpochEvidenceBundle`, `TrainActionEvidence`, `CollectiveEvent`, and `TensorEvent`. |
+| [docs/protocol.md](docs/protocol.md) | Field-by-field schemas for `EpochEvidenceBundle`, `AEPRecord`, `CollectiveEvent`, and `TensorEvent`. |
 | [docs/integration.md](docs/integration.md) | Wiring `EvidenceProfilerHook` into a training loop, collecting Flight Recorder dumps, and an end-to-end trace example. |
 | [docs/cli-reference.md](docs/cli-reference.md) | Complete reference for the `ingest`, `trace`, and `record` subcommands. |
 
