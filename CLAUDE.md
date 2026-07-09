@@ -62,6 +62,21 @@ examples/          — example Flight Recorder dumps and usage
 - Tests for `profiler_hook` and `signing` (issue #11)
 - Multi-rank integration test (issue #12)
 
+
+## Key references — no docs/ directory
+
+| Reference | What it covers |
+|-----------|---------------|
+| `README.md` | Architecture, quick start, CLI commands |
+| `train_replay/graph/prov_graph.py` | PROV-DM graph — the core data model |
+| `train_replay/recording/evidence.py` | EpochEvidenceBundle — the signed record format |
+| `train_replay/collector/flight_recorder.py` | How PyTorch FR dumps are parsed |
+| `tests/test_prov_graph.py` | Shows how the graph is built and queried |
+| `tests/test_recording.py` | Shows recording policy (validation/delta/full) |
+
+Read README.md first. For any new feature, read the relevant source file
+and its test to understand the existing contract before modifying.
+
 ## Roadmap
 
 ### Phase 2: Complete CLI and test coverage (issues #10-#12)
