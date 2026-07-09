@@ -1,4 +1,4 @@
-# wasmagent-train-replay
+# wasmagent-train-replay — CLAUDE.md
 
 ## Project overview
 Python package that builds a cross-rank causal provenance graph for distributed GPU training,
@@ -40,23 +40,54 @@ examples/          — example Flight Recorder dumps and usage
 - Follow ruff lint rules (no unused imports, consistent style)
 - Do not add dependencies without updating `pyproject.toml`
 - The verify command is: `pytest tests/`
+- Never use real GPU/torch in tests — use mocks and fixtures
+- Keep each function small and single-purpose
 
-## Roadmap / next issues
+## Current implementation status
 
-The following features are planned. Bot should implement these in order.
-When an issue is closed, patrol sweep will check this list and open the next one.
+### Completed (all tests passing)
+- `collector/flight_recorder.py` — parses PyTorch Flight Recorder pickle dumps
+- `collector/profiler_hook.py` — EvidenceProfilerHook for tensor-level events (NO TESTS YET)
+- `graph/prov_graph.py` — PROV-DM graph with ancestor traversal and importance scoring
+- `graph/builder.py` — builds ProvGraph from CollectiveEvent lists across ranks
+- `recording/modes.py` — recording policy (validation/delta/full escalation)
+- `recording/recorder.py` — EpochRecorder writes AEP bundles
+- `recording/evidence.py` — EpochEvidenceBundle dataclass
+- `replay/replayer.py` — EpochReplayer.find_root_cause() and suspicious_actions()
+- `signing/signer.py` — Ed25519 signing of bundles (NO TESTS YET)
+- CLI: `ingest`, `trace`, `record` commands
 
-### Phase 2: Complete CLI and test coverage
+### Missing (open issues)
+- CLI `replay` subcommand (issue #10) — EpochReplayer exists, just needs CLI wiring
+- Tests for `profiler_hook` and `signing` (issue #11)
+- Multi-rank integration test (issue #12)
+
+## Roadmap
+
+### Phase 2: Complete CLI and test coverage (issues #10-#12)
+- [x] #1 test coverage for all modules
+- [x] #2 train-replay record CLI command
+- [x] #3 CONTRIBUTING.md
+- [x] #5 fix causal graph traversal
+- [x] #8 node importance scoring
 - [ ] #10 feat: replay CLI subcommand
 - [ ] #11 test: EvidenceProfilerHook + Ed25519 signing tests
 - [ ] #12 test: multi-rank integration test
 
 ### Phase 3: Real PyTorch integration
-- [ ] feat: profiler_hook integration with torch.autograd (register_hook)
-- [ ] feat: multi-dump ingestion (accept list of .pkl files, one per rank)
-- [ ] feat: cli ingest-multi command for cross-rank dumps
+- [ ] feat: profiler_hook integration with torch.autograd register_hook
+- [ ] feat: multi-dump ingestion (list of .pkl files, one per rank)
+- [ ] feat: cli ingest-multi for cross-rank dumps with automatic rank detection
 
 ### Phase 4: Production readiness
-- [ ] feat: EpochEvidenceBundle serialization to JSON/CBOR
+- [ ] feat: EpochEvidenceBundle serialization to JSON/CBOR for persistence
 - [ ] feat: replay --output flag writes causal report to file
 - [ ] perf: streaming parser for large Flight Recorder dumps (>1GB)
+- [ ] feat: anomaly detection — flag tensors with abnormal gradients automatically
+
+## How patrol sweep discovers new issues
+The patrol sweep reads this CLAUDE.md roadmap section.
+When an issue is closed and its checkbox can be ticked, patrol will:
+1. Tick the checkbox in this file
+2. Open the next unchecked issue in the roadmap
+This creates a self-driving development loop.
