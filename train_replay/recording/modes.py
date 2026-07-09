@@ -1,8 +1,9 @@
 """AEP recording modes — mirrors @wasmagent/capability-compiler logic."""
 
 from __future__ import annotations
-from enum import Enum
+
 from dataclasses import dataclass
+from enum import Enum
 
 
 class RecordingMode(str, Enum):

@@ -1,6 +1,7 @@
 """Build a ProvGraph from CollectiveEvent lists across all ranks."""
 
 from __future__ import annotations
+
 from ..collector.flight_recorder import CollectiveEvent
 from .prov_graph import ProvActivity, ProvAgent, ProvEntity, ProvGraph
 
@@ -39,7 +40,9 @@ def build_from_events(events: list[CollectiveEvent]) -> ProvGraph:
 
         # Output entity (tensor after collective)
         out_ent_id = f"tensor:{evt.rank}:{evt.sequence_id}:out"
-        graph.add_entity(ProvEntity(id=out_ent_id, digest=None, rank=evt.rank, step=evt.sequence_id))
+        graph.add_entity(
+            ProvEntity(id=out_ent_id, digest=None, rank=evt.rank, step=evt.sequence_id)
+        )
         graph.was_generated_by(out_ent_id, act_id)
 
     return graph

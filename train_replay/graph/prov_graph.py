@@ -1,8 +1,11 @@
 """PROV-DM causal graph for cross-rank distributed training provenance."""
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Iterator
+
+from collections.abc import Iterator
+from dataclasses import dataclass
+from typing import Any
+
 import networkx as nx
 
 
@@ -83,7 +86,7 @@ class ProvGraph:
                 queue.append(succ)
         return visited
 
-    def causal_subgraph(self, entity_id: str) -> "ProvGraph":
+    def causal_subgraph(self, entity_id: str) -> ProvGraph:
         """Return a new ProvGraph containing only the causal ancestors of entity_id."""
         ancestor_ids = set(self.ancestors_of(entity_id)) | {entity_id}
         sub = nx.subgraph(self._g, ancestor_ids)
@@ -91,8 +94,8 @@ class ProvGraph:
         new._g = nx.DiGraph(sub)
         return new
 
-    def nodes(self) -> Iterator[tuple[str, dict]]:
-        return self._g.nodes(data=True)
+    def nodes(self) -> Iterator[tuple[str, dict[str, Any]]]:
+        return self._g.nodes(data=True)  # type: ignore[no-any-return]
 
-    def to_dict(self) -> dict:
-        return nx.node_link_data(self._g)
+    def to_dict(self) -> dict[str, Any]:
+        return nx.node_link_data(self._g)  # type: ignore[no-any-return]
