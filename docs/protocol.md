@@ -10,7 +10,7 @@ consumed see [architecture.md](architecture.md); for the surrounding CLI see
 Contents:
 
 - [EpochEvidenceBundle](#epochevidencebundle) — the signed, per-epoch envelope
-- [TrainActionEvidence (AEP record)](#trainactionevidence-aep-record) — one recorded collective
+- [AEPRecord (TrainActionEvidence)](#aeprecord-trainactionevidence) — one recorded collective
 - [CollectiveEvent](#collectiveevent) — one row from a Flight Recorder dump
 - [TensorEvent](#tensorevent) — one tensor-level event from the profiler hook
 - [Control enums](#control-enums) — shared `RecordingMode` / `SideEffectClass` values
@@ -46,10 +46,10 @@ reference.
 
 ---
 
-## TrainActionEvidence (AEP record)
+## AEPRecord (TrainActionEvidence)
 
 One Agent Evidence Protocol record per collective. Defined in
-`train_replay/recording/evidence.py`. This is the per-action AEP record emitted
+`train_replay/recording/evidence.py`. This is the per-action **AEPRecord** emitted
 inside an `EpochEvidenceBundle.actions`.
 
 | Field | Type | Default | Meaning |
