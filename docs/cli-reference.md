@@ -4,14 +4,14 @@
 
 The CLI is built with [click](https://click.palletsprojects.com/) and rendered
 with [rich](https://rich.readthedocs.io/). It is installed as the
-`train-replay` entry point (see `pyproject.toml`:
+`train-replay` entry point declared in `pyproject.toml`:
 
 ```
 [project.scripts]
 train-replay = "train_replay.cli.main:cli"
 ```
 
-). Source: `train_replay/cli/main.py`.
+Source: `train_replay/cli/main.py`.
 
 Contents:
 
