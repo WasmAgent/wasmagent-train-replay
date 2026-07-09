@@ -60,13 +60,17 @@ class ProvGraph:
         self._g.add_edge(activity_id, entity_id, rel="used")
 
     def was_generated_by(self, entity_id: str, activity_id: str) -> None:
-        self._g.add_edge(entity_id, activity_id, rel="wasGeneratedBy")
+        # activity -> entity: traversing predecessors of entity reveals its generating activities
+        self._g.add_edge(activity_id, entity_id, rel="wasGeneratedBy")
 
     def was_associated_with(self, activity_id: str, agent_id: str) -> None:
         self._g.add_edge(activity_id, agent_id, rel="wasAssociatedWith")
 
     def ancestors_of(self, entity_id: str) -> list[str]:
-        """Return all activity IDs that causally contributed to entity_id."""
+        """Return all activity IDs that causally contributed to entity_id.
+        Only traverses wasGeneratedBy edges (not used edges), so input
+        entities (consumed but not produced by an activity) return [].
+        """
         visited: list[str] = []
         queue = [entity_id]
         seen: set[str] = set()
@@ -75,7 +79,9 @@ class ProvGraph:
             if node in seen:
                 continue
             seen.add(node)
-            for pred in self._g.predecessors(node):
+            for pred, _, edge_data in self._g.in_edges(node, data=True):
+                if edge_data.get("rel") != "wasGeneratedBy":
+                    continue  # skip "used" edges — those are inputs, not ancestry
                 data = self._g.nodes[pred]
                 if data.get("kind") == "activity":
                     visited.append(pred)
