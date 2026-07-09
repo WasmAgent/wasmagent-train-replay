@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..graph.prov_graph import ProvGraph
-from ..recording.evidence import EpochEvidenceBundle, TrainActionEvidence
+from ..recording.evidence import AEPRecord, EpochEvidenceBundle
 from ..recording.modes import RecordingMode
 
 
@@ -14,7 +14,7 @@ class ReplayResult:
     epoch: int
     rank: int
     causal_ancestors: list[str]
-    suspicious_actions: list[TrainActionEvidence]
+    suspicious_actions: list[AEPRecord]
 
 
 class EpochReplayer:
@@ -27,7 +27,7 @@ class EpochReplayer:
         """Return activity IDs that causally contributed to entity_id."""
         return self._graph.ancestors_of(entity_id)
 
-    def suspicious_actions(self, bundle: EpochEvidenceBundle) -> list[TrainActionEvidence]:
+    def suspicious_actions(self, bundle: EpochEvidenceBundle) -> list[AEPRecord]:
         """Return actions that were recorded in FULL mode — highest risk signals."""
         return [a for a in bundle.actions if a.recording_mode == RecordingMode.FULL]
 

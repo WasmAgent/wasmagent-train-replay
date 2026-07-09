@@ -188,7 +188,7 @@ non-zero with a usage message. Successful commands exit `0`.
 
 - [architecture.md](architecture.md) — system design and the PROV-DM data model.
 - [protocol.md](protocol.md) — record schemas (`CollectiveEvent`,
-  `TrainActionEvidence`, `EpochEvidenceBundle`, `TensorEvent`).
+  `AEPRecord`, `EpochEvidenceBundle`, `TensorEvent`).
 - [integration.md](integration.md) — wiring the profiler hook into a training
   loop and an end-to-end trace example.
 - `README.md` — quick start and recording-mode overview.

@@ -9,7 +9,8 @@ from .modes import RecordingMode
 
 
 @dataclass
-class TrainActionEvidence:
+class AEPRecord:
+    """One Agent Evidence Protocol (AEP) record per recorded collective."""
     action_id: str
     rank: int
     step: int
@@ -28,7 +29,7 @@ class EpochEvidenceBundle:
     schema_version: str = "train-aep/v0.1"
     run_id: str = ""
     epoch: int = 0
-    actions: list[TrainActionEvidence] = field(default_factory=list)
+    actions: list[AEPRecord] = field(default_factory=list)
     signature: dict[str, str] | None = None
 
     def canonical_bytes(self) -> bytes:

@@ -40,7 +40,7 @@ PyTorch Flight Recorder dump (.pkl)
 ┌─────────────────────────┐
 │  recording              │  AEP evidence collection
 │  ├── modes.py           │  RecordingMode + compile_recording_policy
-│  ├── evidence.py        │  TrainActionEvidence + EpochEvidenceBundle
+│  ├── evidence.py        │  AEPRecord + EpochEvidenceBundle
 │  └── recorder.py        │  EpochRecorder (per-epoch accumulator)
 └────────────┬────────────┘
              │

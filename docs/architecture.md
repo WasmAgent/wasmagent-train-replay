@@ -104,7 +104,7 @@ root-cause queries.
 `EpochRecorder` accumulates one `EpochEvidenceBundle` per epoch. For every
 collective it runs `compile_recording_policy(RiskContext)` to decide the
 `RecordingMode` (`validation`, `delta`, or `full`), appends a
-`TrainActionEvidence` action, and can later bulk-escalate a rank via
+`AEPRecord` action, and can later bulk-escalate a rank via
 `escalate_rank(rank)` when an anomaly is detected.
 
 ### replay

@@ -140,7 +140,7 @@ and in/out entities present for every rank).
 
 Wrap the same events in an `EpochRecorder` to produce the signed evidence bundle.
 The recorder runs each collective through the recording policy and emits one
-`TrainActionEvidence` per collective.
+`AEPRecord` per collective.
 
 ```python
 from train_replay.recording.recorder import EpochRecorder
