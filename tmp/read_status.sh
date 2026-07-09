@@ -1,0 +1,1 @@
+cd /srv/claude-bot/worktrees/WasmAgent_wasmagent-train-replay && git status --short && echo "---" && git log --oneline -5 && echo "---" && git diff HEAD --name-only
