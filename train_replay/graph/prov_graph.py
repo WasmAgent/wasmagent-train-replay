@@ -91,7 +91,7 @@ class ProvGraph:
         return new
 
     def nodes(self) -> Iterator[tuple[str, dict[str, Any]]]:
-        return self._g.nodes(data=True)  # type: ignore[return-value,no-any-return]
+        return self._g.nodes(data=True)  # type: ignore[no-any-return]
 
     def to_dict(self) -> dict[str, Any]:
-        return nx.node_link_data(self._g)  # type: ignore[return-value,no-any-return]
+        return nx.node_link_data(self._g)  # type: ignore[no-any-return]
