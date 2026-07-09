@@ -1,6 +1,7 @@
 """PyTorch autograd / profiler hooks for tensor-level evidence collection."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -29,8 +30,8 @@ class EvidenceProfilerHook:
     def on_step_begin(self) -> None:
         self._step += 1
 
-    def record_tensor(self, op_name: str, tensor: "torch.Tensor", digest: str | None = None) -> None:
-        import hashlib, struct
+    def record_tensor(self, op_name: str, tensor: torch.Tensor, digest: str | None = None) -> None:
+        import hashlib
         if digest is None:
             try:
                 flat = tensor.detach().cpu().float().numpy().tobytes()

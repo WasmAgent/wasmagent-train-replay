@@ -1,8 +1,11 @@
 """PROV-DM causal graph for cross-rank distributed training provenance."""
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Iterator
+
+from collections.abc import Iterator
+from dataclasses import dataclass
+from typing import Any
+
 import networkx as nx
 
 
@@ -57,13 +60,17 @@ class ProvGraph:
         self._g.add_edge(activity_id, entity_id, rel="used")
 
     def was_generated_by(self, entity_id: str, activity_id: str) -> None:
-        self._g.add_edge(entity_id, activity_id, rel="wasGeneratedBy")
+        # activity -> entity: traversing predecessors of entity reveals its generating activities
+        self._g.add_edge(activity_id, entity_id, rel="wasGeneratedBy")
 
     def was_associated_with(self, activity_id: str, agent_id: str) -> None:
         self._g.add_edge(activity_id, agent_id, rel="wasAssociatedWith")
 
     def ancestors_of(self, entity_id: str) -> list[str]:
-        """Return all activity IDs that causally contributed to entity_id."""
+        """Return all activity IDs that causally contributed to entity_id.
+        Only traverses wasGeneratedBy edges (not used edges), so input
+        entities (consumed but not produced by an activity) return [].
+        """
         visited: list[str] = []
         queue = [entity_id]
         seen: set[str] = set()
@@ -72,14 +79,16 @@ class ProvGraph:
             if node in seen:
                 continue
             seen.add(node)
-            for pred in self._g.predecessors(node):
+            for pred, _, edge_data in self._g.in_edges(node, data=True):
+                if edge_data.get("rel") != "wasGeneratedBy":
+                    continue  # skip "used" edges — those are inputs, not ancestry
                 data = self._g.nodes[pred]
                 if data.get("kind") == "activity":
                     visited.append(pred)
                 queue.append(pred)
         return visited
 
-    def causal_subgraph(self, entity_id: str) -> "ProvGraph":
+    def causal_subgraph(self, entity_id: str) -> ProvGraph:
         """Return a new ProvGraph containing only the causal ancestors of entity_id."""
         ancestor_ids = set(self.ancestors_of(entity_id)) | {entity_id}
         sub = nx.subgraph(self._g, ancestor_ids)
@@ -87,8 +96,8 @@ class ProvGraph:
         new._g = nx.DiGraph(sub)
         return new
 
-    def nodes(self) -> Iterator[tuple[str, dict]]:
-        return self._g.nodes(data=True)
+    def nodes(self) -> Iterator[tuple[str, dict[str, Any]]]:
+        return self._g.nodes(data=True)  # type: ignore[no-any-return]
 
-    def to_dict(self) -> dict:
-        return nx.node_link_data(self._g)
+    def to_dict(self) -> dict[str, Any]:
+        return nx.node_link_data(self._g)  # type: ignore[no-any-return]

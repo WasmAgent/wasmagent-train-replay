@@ -1,6 +1,7 @@
 """Parse PyTorch Flight Recorder pickle dumps into CollectiveEvent records."""
 
 from __future__ import annotations
+
 import pickle
 from dataclasses import dataclass, field
 from pathlib import Path

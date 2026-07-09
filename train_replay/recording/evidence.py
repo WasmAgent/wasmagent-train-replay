@@ -1,9 +1,10 @@
 """AEP evidence types adapted for distributed training actions."""
 
 from __future__ import annotations
+
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any
+
 from .modes import RecordingMode
 
 
@@ -31,7 +32,8 @@ class EpochEvidenceBundle:
     signature: dict[str, str] | None = None
 
     def canonical_bytes(self) -> bytes:
-        import json, dataclasses
+        import dataclasses
+        import json
         d = dataclasses.asdict(self)
         d.pop("signature", None)
         return json.dumps(d, sort_keys=True, default=str).encode()
