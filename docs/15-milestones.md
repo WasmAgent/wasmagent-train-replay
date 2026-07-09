@@ -9,7 +9,7 @@
 - [ ] `tests/test_replayer.py` covers find_root_cause, suspicious_actions across mixed-mode bundles, and replay_rank output
 - [ ] `tests/test_graph_builder.py` validates cross-rank edge correctness and node identity on synthetic multi-rank traces
 - [ ] `examples/synthetic_trace.pkl` contains fixture Flight Recorder dump usable by all test suites without GPU
-- [ ] `make demo` runs `examples/fault_injection_demo.py` end-to-end and exits 0
+- [x] `make demo` runs `examples/fault_injection_demo.py` end-to-end and exits 0
 
 ## Milestone 2 — Cross-Rank Auto-Escalation & Risk Signals
 
