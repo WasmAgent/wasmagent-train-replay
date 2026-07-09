@@ -182,3 +182,70 @@ Defined in `train_replay/signing/signer.py`.
 Verification (`verify_bundle(bundle, public_key)`) recomputes
 `canonical_bytes()` and checks the signature with the supplied Ed25519 public
 key, returning `False` on any missing signature or verification failure.
+
+---
+
+## Worked example: a signed bundle on the wire
+
+This ties the schemas above to the exact bytes that hit disk. The bundle below
+holds a single recorded collective — an `all_reduce` on rank 2, sequence 3 —
+recorded in `full` mode because `all_reduce` classifies as `mutate-external`
+(see [architecture.md § Recording policy](architecture.md#recording-policy)).
+
+### Canonical payload (`canonical_bytes()`)
+
+`canonical_bytes()` strips `signature` and serialises everything else with
+`json.dumps(..., sort_keys=True, default=str)`. On the wire this is a single
+line; it is pretty-printed here for readability:
+
+```json
+{
+  "actions": [
+    {
+      "action_id": "r2:seq3",
+      "causal_chain_id": null,
+      "collective_type": "all_reduce",
+      "delta_stats": null,
+      "parent_action_id": null,
+      "rank": 2,
+      "recording_mode": "full",
+      "step": 3,
+      "tensor_input_digest": null,
+      "tensor_output_digest": null,
+      "timestamp_ns": 3100000
+    }
+  ],
+  "epoch": 5,
+  "run_id": "run-42",
+  "schema_version": "train-aep/v0.1"
+}
+```
+
+Because keys are sorted and `RecordingMode` is a `str`-subclass enum (so it
+serialises as its value, `"full"`), this byte string is stable for a given
+action set.
+
+### Digest
+
+```
+sha256(canonical_bytes()) = f45ba1a42da0d349d8aa8b4c2e4e73e738807b58b099fe9954ed23e6247b0779
+```
+
+An auditor records this digest out-of-band; any post-hoc edit of a field above
+changes it, which is exactly what `verify_bundle()` detects.
+
+### Signature envelope (`bundle.signature` after `BundleSigner.sign()`)
+
+```json
+{
+  "alg": "ed25519",
+  "key_id": "ci-key",
+  "sig": "n6RDjXLF9z8FLEmo8IbMUI/xhORNI/QVt8PUpjbzJOAMi75BQbZSVE3ISpcHIAg6RWgDiYetxt/Vl451VtM6AQ=="
+}
+```
+
+`sig` is the base64-encoded Ed25519 signature of the single-line
+`canonical_bytes()`; it is specific to the key generated for this example
+(`BundleSigner.generate(key_id="ci-key")`). `verify_bundle(bundle, public_key)`
+returns `True` for the matching public key and `False` for any other key — or
+for a bundle whose canonical bytes have been altered after signing.
