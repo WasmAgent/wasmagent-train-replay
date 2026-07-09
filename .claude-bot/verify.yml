@@ -1,3 +1,14 @@
-verify:
-  cmd: "pytest tests/"
-  timeout: 120
+# Mirrors .github/workflows/ci.yml
+commands:
+  - name: install
+    cmd: pip install -e ".[dev]" --break-system-packages -q
+    timeout: 3m
+  - name: lint
+    cmd: python3 -m ruff check train_replay tests
+    timeout: 2m
+  - name: typecheck
+    cmd: python3 -m mypy train_replay
+    timeout: 3m
+  - name: test
+    cmd: pytest tests/ -x
+    timeout: 5m
