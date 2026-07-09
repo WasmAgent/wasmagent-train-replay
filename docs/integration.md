@@ -165,6 +165,28 @@ print(bundle.signature["key_id"])  # "ci-key"
 `escalate_rank()` is how a detected anomaly retroactively upgrades evidence for
 the suspect rank from `validation`/`delta` to `full`.
 
+### Verify the signature (tamper-evidence round-trip)
+
+Signing is only useful if an auditor can check it later. `verify_bundle()` is
+the other half of the round-trip (`train_replay/signing/signer.py`): it
+recomputes `canonical_bytes()` and checks the stored Ed25519 signature against
+the public key. Because the signature covers the canonical bytes, *any* edit to
+a signed bundle invalidates it.
+
+```python
+from train_replay.signing.signer import verify_bundle
+
+# _pubkey is the Ed25519PublicKey returned by BundleSigner.generate() above.
+assert verify_bundle(bundle, _pubkey)   # True — signature matches
+
+# Tamper-evidence: mutate a field and the signature no longer verifies.
+bundle.epoch = 999
+assert not verify_bundle(bundle, _pubkey)   # False — canonical_bytes() changed
+```
+
+This is the property an auditor relies on: a recorded bundle plus its public key
+proves the evidence was not modified after signing.
+
 ## 5. Trace a gradient anomaly back to its origin rank
 
 `EpochReplayer` couples the graph (for *causality*) and the bundle (for

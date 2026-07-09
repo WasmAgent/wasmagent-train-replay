@@ -114,11 +114,14 @@ One tensor-level event captured live by the profiler hook. Defined in
 | `rank` | `int` | *(required)* | Rank owning this tensor. |
 | `step` | `int` | *(required)* | Current training step, incremented by `on_step_begin()`. |
 | `shape` | `list[int]` | `[]` | `list(tensor.shape)`. |
-| `digest` | `str \| None` | *(computed)* | `sha256` of the first 4096 bytes of the flattened tensor, truncated to 16 hex chars; `None` if the tensor could not be read. |
+| `digest` | `str \| None` | *(computed)* | `sha256` of the first 4096 bytes of the tensor after `.detach().cpu().float()` normalisation (row-major bytes — the first 1024 float32 values), truncated to 16 hex chars; `None` if the tensor could not be read. |
 
 The digest is intentionally cheap (first 4096 bytes, 16 hex chars) so it can be
 recorded per-tensor without dominating step time; it is sufficient for
-ordering/identity checks, not cryptographic integrity of the full tensor.
+ordering/identity checks, not cryptographic integrity of the full tensor. Note
+the `.float()` cast: the digest is over the **float32-normalised** byte buffer,
+so a `float16`/`bfloat16`/integer tensor is hashed as its upcast `float32` view,
+not its raw storage.
 
 ---
 
