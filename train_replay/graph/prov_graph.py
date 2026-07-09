@@ -133,7 +133,8 @@ class ProvGraph:
             desc_count = len(descendants_map[node_id])
             base_score = desc_count / total_nodes if total_nodes > 0 else 0.0
             node_data = self._g.nodes[node_id]["data"]
-            node_data.importance_score = base_score
+            if hasattr(node_data, "importance_score"):
+                node_data.importance_score = base_score
 
         # Boost ancestors of anomalous nodes.
         if anomalous_set:
