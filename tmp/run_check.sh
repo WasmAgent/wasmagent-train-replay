@@ -1,22 +1,12 @@
 #!/bin/bash
-set -e
 cd /srv/claude-bot/worktrees/WasmAgent_wasmagent-train-replay
-
-echo "=== pip install -e .[dev] ==="
-pip install -e ".[dev]" --break-system-packages -q 2>&1 || echo "pip exit: $?"
-echo ""
-
-echo "=== ruff check ==="
-python3 -m ruff check train_replay tests 2>&1 || echo "ruff exit: $?"
-echo ""
-
-echo "=== mypy ==="
-python3 -m mypy train_replay 2>&1 || echo "mypy exit: $?"
-echo ""
-
-echo "=== pytest ==="
-pytest tests/ -x 2>&1 || echo "pytest exit: $?"
-echo ""
-
-echo "=== git status ==="
-git status --short 2>&1 || true
+pip install -e ".[dev]" --break-system-packages -q 2>&1
+echo "--- PIP EXIT: $? ---"
+python3 -m ruff check train_replay tests 2>&1
+echo "--- RUFF EXIT: $? ---"
+python3 -m mypy train_replay 2>&1
+echo "--- MYPY EXIT: $? ---"
+pytest tests/ -x 2>&1
+echo "--- PYTEST EXIT: $? ---"
+git status --short 2>&1
+echo "--- GIT EXIT: $? ---"
