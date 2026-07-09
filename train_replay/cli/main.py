@@ -18,7 +18,7 @@ def cli() -> None:
 
 
 @cli.command()
-@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))  # type: ignore[type-var]
 @click.option("--rank", "-r", type=int, default=None, help="Filter to specific rank")
 def ingest(dump_path: Path, rank: int | None) -> None:
     """Ingest a PyTorch Flight Recorder dump and build the causal graph."""
@@ -38,7 +38,7 @@ def ingest(dump_path: Path, rank: int | None) -> None:
 
 @cli.command()
 @click.argument("entity_id")
-@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))  # type: ignore[type-var]
 def trace(entity_id: str, dump_path: Path) -> None:
     """Trace the causal ancestors of a tensor entity."""
     from train_replay.collector.flight_recorder import load_flight_recorder
@@ -58,7 +58,7 @@ def trace(entity_id: str, dump_path: Path) -> None:
 
 
 @cli.command()
-@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))  # type: ignore[type-var]
 @click.option("--run-id", default="dev-run", show_default=True)
 @click.option("--epoch", default=0, type=int, show_default=True)
 def record(dump_path: Path, run_id: str, epoch: int) -> None:

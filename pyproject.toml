@@ -47,3 +47,14 @@ select = ["E", "F", "I", "UP"]
 python_version = "3.10"
 strict = true
 ignore_missing_imports = true
+
+# Some CI/sandbox environments ship a broken partial PEP-561 namespace stub for
+# `google` (the types-google-cloud-ndb package installs google-stubs/ with no
+# top-level google/ package). mypy aborts with
+#   Cannot read file '.../dist-packages//google': No such file or directory
+# before it checks any source. This package never imports google, so skip
+# following into that namespace and let `mypy train_replay` proceed.
+[[tool.mypy.overrides]]
+module = ["google", "google.*"]
+follow_imports = "skip"
+ignore_missing_imports = true
