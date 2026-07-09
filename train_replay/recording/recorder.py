@@ -1,7 +1,7 @@
 """EpochRecorder — collects evidence for one training epoch."""
 
 from __future__ import annotations
-import time
+
 from ..collector.flight_recorder import CollectiveEvent
 from .evidence import EpochEvidenceBundle, TrainActionEvidence
 from .modes import RecordingMode, RiskContext, SideEffectClass, compile_recording_policy
@@ -15,11 +15,18 @@ def _collective_side_effect(ctype: str) -> SideEffectClass:
 class EpochRecorder:
     """Records AEP evidence for one epoch across all ranks."""
 
-    def __init__(self, run_id: str, epoch: int, default_mode: RecordingMode = RecordingMode.VALIDATION) -> None:
+    def __init__(
+        self,
+        run_id: str,
+        epoch: int,
+        default_mode: RecordingMode = RecordingMode.VALIDATION,
+    ) -> None:
         self._bundle = EpochEvidenceBundle(run_id=run_id, epoch=epoch)
         self._default_mode = default_mode
 
-    def record_collective(self, evt: CollectiveEvent, risk_override: RiskContext | None = None) -> None:
+    def record_collective(
+        self, evt: CollectiveEvent, risk_override: RiskContext | None = None,
+    ) -> None:
         ctx = risk_override or RiskContext(
             side_effect_class=_collective_side_effect(evt.collective_type)
         )

@@ -1,7 +1,9 @@
 """Deterministic replayer — reconstruct training state from evidence bundles."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
+
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import EpochEvidenceBundle, TrainActionEvidence
 from ..recording.modes import RecordingMode

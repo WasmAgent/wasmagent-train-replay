@@ -1,8 +1,10 @@
 """CLI entry point for wasmagent-train-replay."""
 
 from __future__ import annotations
-import click
+
 from pathlib import Path
+
+import click
 from rich.console import Console
 from rich.table import Table
 
@@ -61,9 +63,9 @@ def trace(entity_id: str, dump_path: Path) -> None:
 @click.option("--epoch", default=0, type=int, show_default=True)
 def record(dump_path: Path, run_id: str, epoch: int) -> None:
     """Record AEP evidence for all collectives in a Flight Recorder dump."""
+
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.recording.recorder import EpochRecorder
-    import json, dataclasses
 
     events = load_flight_recorder(dump_path)
     recorder = EpochRecorder(run_id=run_id, epoch=epoch)

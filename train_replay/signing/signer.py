@@ -1,12 +1,14 @@
 """Ed25519 signing for EpochEvidenceBundle — DSSE-style envelope."""
 
 from __future__ import annotations
+
+import base64
+
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PrivateKey,
     Ed25519PublicKey,
 )
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-import base64
+
 from ..recording.evidence import EpochEvidenceBundle
 
 
@@ -26,7 +28,7 @@ class BundleSigner:
         return bundle
 
     @classmethod
-    def generate(cls, key_id: str = "dev-key") -> tuple["BundleSigner", Ed25519PublicKey]:
+    def generate(cls, key_id: str = "dev-key") -> tuple[BundleSigner, Ed25519PublicKey]:
         key = Ed25519PrivateKey.generate()
         return cls(key, key_id), key.public_key()
 

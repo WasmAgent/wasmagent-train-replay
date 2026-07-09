@@ -1,7 +1,10 @@
 """Tests for PROV-DM causal graph."""
 
 from train_replay.graph.prov_graph import (
-    ProvActivity, ProvAgent, ProvEntity, ProvGraph,
+    ProvActivity,
+    ProvAgent,
+    ProvEntity,
+    ProvGraph,
 )
 
 
