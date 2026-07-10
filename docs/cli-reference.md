@@ -16,6 +16,10 @@ Source: `train_replay/cli/main.py`.
 All path arguments are click paths with `path_type=Path`, so command handlers
 receive `pathlib.Path` objects before passing them to the collector.
 
+The CLI is intentionally read-mostly: `ingest` and `trace` build graphs in
+memory, and `record` prints a digest for the generated bundle. It does not write
+graph or bundle files in the current release.
+
 Contents:
 
 - [Global](#global)
@@ -144,6 +148,10 @@ train-replay record [OPTIONS] DUMP_PATH
    recording policy.
 3. Prints the number of recorded actions and the bundle digest
    (`bundle.digest()` = `sha256` of `canonical_bytes()`).
+
+`record` does not sign or persist the bundle by itself. Use
+`train_replay.signing.BundleSigner` from Python when a workflow needs the
+DSSE-style Ed25519 signature envelope.
 
 ### Example
 

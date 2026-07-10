@@ -5,11 +5,11 @@
 
 This is the canonical schema and wire-format reference. The implementation does
 not define a protobuf, msgpack, or custom binary frame: PyTorch Flight Recorder
-input arrives as a Python pickle dump, and AEP evidence is converted to
-deterministic UTF-8 JSON bytes by `EpochEvidenceBundle.canonical_bytes()` before
-hashing and signing. For how these records are produced and consumed see
-[architecture.md](architecture.md); for the surrounding CLI see
-[cli-reference.md](cli-reference.md).
+input arrives as a Python pickle dump, tensor events are in-process dataclasses,
+and AEP evidence is converted to deterministic UTF-8 JSON bytes by
+`EpochEvidenceBundle.canonical_bytes()` before hashing and signing. For how
+these records are produced and consumed see [architecture.md](architecture.md);
+for the surrounding CLI see [cli-reference.md](cli-reference.md).
 
 All structs in this document are Python dataclasses in the `train_replay`
 package. Field names below are source-level names, and any on-disk
@@ -42,6 +42,11 @@ The "binary" boundary for evidence is therefore the canonical byte string
 returned by `canonical_bytes()`. That byte string, not the pretty-printed JSON
 shown in examples, is what `digest()`, `BundleSigner.sign()`, and
 `verify_bundle()` operate on.
+
+When persisted outside the current CLI, callers should write either the raw
+Flight Recorder pickle dump or a JSON representation derived from the dataclass
+fields below. The repository does not currently ship a bundle writer command;
+`train-replay record` prints the action count and bundle digest.
 
 ---
 

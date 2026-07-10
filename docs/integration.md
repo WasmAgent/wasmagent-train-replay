@@ -66,6 +66,8 @@ What this produces:
 - Each `TensorEvent.tensor_id` is `r{rank}:s{step}:{op_name}` and carries an
   optional `digest` (a cheap `sha256` over the first 4096 bytes of the flattened
   tensor, 16 hex chars). See [protocol.md § TensorEvent](protocol.md#tensorevent).
+- `hook.events` returns a copy of the internal list, so consumers can snapshot
+  collected events without mutating the hook state used by the training loop.
 
 > **Where to attach deeper hooks.** The roadmap calls for wiring
 > `record_tensor()` behind `torch.autograd` `register_hook` callbacks so
@@ -167,7 +169,9 @@ print(bundle.signature["key_id"])  # "ci-key"
 ```
 
 `escalate_rank()` is how a detected anomaly retroactively upgrades evidence for
-the suspect rank from `validation`/`delta` to `full`.
+the suspect rank from `validation`/`delta` to `full`. The shipped CLI does not
+currently persist signed bundles; use the Python API above when an integration
+needs the Ed25519 signature envelope as an artifact.
 
 ### Verify the signature (tamper-evidence round-trip)
 

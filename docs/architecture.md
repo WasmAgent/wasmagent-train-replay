@@ -71,7 +71,9 @@ and which of them were high-risk?"
 The current implementation keeps these stages as small, importable Python
 modules. There is no background daemon or remote service in the ingestion path:
 the CLI and tests call the same collector, graph, recording, replay, and signing
-APIs documented below.
+APIs documented below. A useful boundary to keep in mind is that the graph and
+recording layers never parse raw PyTorch data directly; they receive
+`CollectiveEvent` and `TensorEvent` dataclasses from the collector.
 
 ## Component responsibilities
 
@@ -122,9 +124,10 @@ combining both. This is the layer an operator queries during a post-mortem.
 ### signing
 
 `BundleSigner.sign(bundle)` canonicalises the bundle (signature field stripped,
-fields sorted) and attaches an Ed25519 signature in a DSSE-style envelope.
-`verify_bundle(bundle, public_key)` recomputes the canonical bytes and checks
-the signature. See [Ed25519 signing](#ed25519-signing-dsse-envelope) below.
+fields sorted) and attaches an Ed25519 signature in a DSSE-style envelope stored
+as `bundle.signature`. `verify_bundle(bundle, public_key)` recomputes the
+canonical bytes and checks the signature. See
+[Ed25519 signing](#ed25519-signing-dsse-envelope) below.
 
 ### cli
 
