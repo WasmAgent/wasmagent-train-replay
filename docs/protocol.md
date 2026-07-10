@@ -3,8 +3,12 @@
 > Field-by-field reference for every record type that flows through the pipeline.
 > Types are Python type annotations as they appear in the source dataclasses.
 
-This is the canonical schema reference. For how these records are produced and
-consumed see [architecture.md](architecture.md); for the surrounding CLI see
+This is the canonical schema and wire-format reference. The implementation does
+not define a protobuf, msgpack, or custom binary frame: PyTorch Flight Recorder
+input arrives as a Python pickle dump, and AEP evidence is converted to
+deterministic UTF-8 JSON bytes by `EpochEvidenceBundle.canonical_bytes()` before
+hashing and signing. For how these records are produced and consumed see
+[architecture.md](architecture.md); for the surrounding CLI see
 [cli-reference.md](cli-reference.md).
 
 Contents:
@@ -15,6 +19,24 @@ Contents:
 - [TensorEvent](#tensorevent) — one tensor-level event from the profiler hook
 - [Control enums](#control-enums) — shared `RecordingMode` / `SideEffectClass` values
 - [Signature envelope](#signature-envelope) — the DSSE-style signing block
+- [Wire encodings](#wire-encodings) — byte-level source and signing formats
+
+---
+
+## Wire encodings
+
+| Record | Source / sink | Byte representation |
+|---|---|---|
+| `CollectiveEvent` | Read from PyTorch Flight Recorder dumps by `load_flight_recorder(path)`. | Pickle bytes containing a dict with an `entries` list. The loader maps each entry to the `CollectiveEvent` dataclass. |
+| `TensorEvent` | Produced in-process by `EvidenceProfilerHook.record_tensor()`. | Python dataclass values in memory; tensor identity is represented by `tensor_id`, shape metadata, and an optional digest. |
+| `EpochEvidenceBundle` | Produced by `EpochRecorder.bundle()` and signed by `BundleSigner.sign()`. | `canonical_bytes()` returns UTF-8 JSON bytes with keys sorted and `signature` omitted. These bytes are the hash and signature payload. |
+| `AEPRecord` | Embedded in `EpochEvidenceBundle.actions`. | JSON object inside the bundle canonical payload; `RecordingMode` values serialize as their string values (`"validation"`, `"delta"`, `"full"`). |
+| Signing wrapper | Stored in `EpochEvidenceBundle.signature`. | JSON object with `alg`, `key_id`, and base64 `sig`, where `sig` is the Ed25519 signature over `canonical_bytes()`. |
+
+The "binary" boundary for evidence is therefore the canonical byte string
+returned by `canonical_bytes()`. That byte string, not the pretty-printed JSON
+shown in examples, is what `digest()`, `BundleSigner.sign()`, and
+`verify_bundle()` operate on.
 
 ---
 
