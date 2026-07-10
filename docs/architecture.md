@@ -18,7 +18,8 @@ training loop see [integration.md](integration.md). For command-line usage see
    The recording policy (`validation → delta → full`) records cheaply by default
    and escalates only on risk signals.
 3. **Tamper-evidence.** Each epoch's evidence is canonicalised and Ed25519-signed
-   into a DSSE-style envelope so audits can prove the record was not modified.
+   into a DSSE-style envelope (Delegate Signing for Secure Environments) so
+   audits can prove the record was not modified.
 
 ## System flow
 
@@ -171,6 +172,19 @@ of evidence handed off for replay.
 
 ## Recording policy
 
+The default recording stance is `validation`: keep enough ordering and digest
+metadata to prove that a collective was observed without materialising the full
+tensor. Validation checks and risk signals then escalate evidence capture to
+`delta` or `full`:
+
+- `delta` is selected for low-risk local mutation, where a statistical diff is
+  enough to explain what changed.
+- `full` is selected for unknown or external side effects, tainted inputs,
+  consent/vetting anomalies, and post-hoc rank escalation.
+
+In code, those checks are represented by `RiskContext` and compiled by
+`compile_recording_policy(ctx)`.
+
 The recording policy mirrors the `compileToRecordingPolicy` logic from
 [@wasmagent/capability-compiler](https://github.com/WasmAgent/wasmagent-js/tree/main/packages/capability-compiler).
 Given a `RiskContext`, `compile_recording_policy(ctx)` returns a
@@ -208,7 +222,9 @@ detected anomaly retroactively upgrades the evidence for the suspect rank.
 ## Ed25519 signing (DSSE-style envelope)
 
 Every `EpochEvidenceBundle` can be signed into a DSSE-style envelope by
-`BundleSigner`.
+`BundleSigner`. DSSE stands for Delegate Signing for Secure Environments; in
+this repository the envelope is implemented as the `signature` dictionary on
+the bundle rather than as a separate protobuf or JSON document.
 
 ### Canonicalisation
 
