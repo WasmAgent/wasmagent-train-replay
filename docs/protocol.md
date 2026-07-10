@@ -11,6 +11,11 @@ hashing and signing. For how these records are produced and consumed see
 [architecture.md](architecture.md); for the surrounding CLI see
 [cli-reference.md](cli-reference.md).
 
+All structs in this document are Python dataclasses in the `train_replay`
+package. Field names below are source-level names, and any on-disk
+representation is derived from those dataclasses rather than a separate schema
+compiler.
+
 Contents:
 
 - [EpochEvidenceBundle](#epochevidencebundle) — the signed, per-epoch envelope

@@ -68,6 +68,11 @@ The flow is one-directional for ingestion, but `replay` reads back from the
 graph *and* a recorded bundle to answer "which collectives caused this tensor,
 and which of them were high-risk?"
 
+The current implementation keeps these stages as small, importable Python
+modules. There is no background daemon or remote service in the ingestion path:
+the CLI and tests call the same collector, graph, recording, replay, and signing
+APIs documented below.
+
 ## Component responsibilities
 
 | Component | Module | Responsibility |

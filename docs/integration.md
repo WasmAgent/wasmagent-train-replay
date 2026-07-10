@@ -8,6 +8,10 @@ This guide shows the live-training side. For the formats these steps produce see
 [protocol.md](protocol.md); for the CLI that consumes them see
 [cli-reference.md](cli-reference.md).
 
+The examples use the same public APIs as the tests and CLI. In production, call
+them from each rank and aggregate the resulting Flight Recorder dumps before
+building the graph.
+
 ## Prerequisites
 
 - Python 3.10+
@@ -64,9 +68,9 @@ What this produces:
   tensor, 16 hex chars). See [protocol.md § TensorEvent](protocol.md#tensorevent).
 
 > **Where to attach deeper hooks.** The roadmap calls for wiring
-  `record_tensor()` behind `torch.autograd` `register_hook` callbacks so
-  gradient tensors are captured automatically; today you call `record_tensor()`
-  explicitly. The `TensorEvent` schema already supports this richer integration.
+> `record_tensor()` behind `torch.autograd` `register_hook` callbacks so
+> gradient tensors are captured automatically; today you call `record_tensor()`
+> explicitly. The `TensorEvent` schema already supports this richer integration.
 
 ## 2. Collect Flight Recorder dumps
 

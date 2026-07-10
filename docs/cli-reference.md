@@ -13,13 +13,15 @@ train-replay = "train_replay.cli.main:cli"
 
 Source: `train_replay/cli/main.py`.
 
+All path arguments are click paths with `path_type=Path`, so command handlers
+receive `pathlib.Path` objects before passing them to the collector.
+
 Contents:
 
 - [Global](#global)
 - [`train-replay ingest`](#train-replay-ingest)
 - [`train-replay trace`](#train-replay-trace)
 - [`train-replay record`](#train-replay-record)
-- [`train-replay replay` (planned — issue #10)](#train-replay-replay-planned--issue-10)
 
 ## Global
 
@@ -148,35 +150,6 @@ train-replay record [OPTIONS] DUMP_PATH
 ```bash
 train-replay record path/to/nccl_trace.pkl --run-id my-run --epoch 5
 ```
-
-## `train-replay replay` (planned — issue #10)
-
-> **Status: not yet wired.** `EpochReplayer` exists in
-> `train_replay/replay/replayer.py` with `find_root_cause()`,
-> `suspicious_actions()`, and `replay_rank()`; issue #10 tracks exposing it as a
-> CLI subcommand. The interface below is the intended design, consistent with
-> the existing commands.
-
-### Intended usage
-
-```
-train-replay replay [OPTIONS] ENTITY_ID DUMP_PATH [--rank RANK] [--run-id RUN_ID] [--epoch EPOCH]
-```
-
-### Intended behaviour
-
-1. Build the graph from `DUMP_PATH`.
-2. (Optionally) record a bundle with `--run-id` / `--epoch` to evaluate risk.
-3. `EpochReplayer.replay_rank(bundle, rank, ENTITY_ID)` → `ReplayResult`, which
-   combines:
-   - `causal_ancestors` — activity IDs that produced `ENTITY_ID` (from the graph).
-   - `suspicious_actions` — FULL-mode actions on `--rank` (from the bundle).
-4. Print the ancestors and the suspicious actions.
-
-This closes the loop started by `trace` (graph-only) by layering the recorded
-risk signals on top, exactly as the programmatic API in
-[integration.md § 5](integration.md#5-trace-a-gradient-anomaly-back-to-its-origin-rank)
-does today.
 
 ## Exit codes & errors
 
