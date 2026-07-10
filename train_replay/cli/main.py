@@ -2,17 +2,27 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _dist_version
 from pathlib import Path
 
 import click
 from rich.console import Console
 from rich.table import Table
 
+# Resolved explicitly (rather than click's runtime `package_name=`) because the
+# click type stub bundled here does not declare that kwarg; `version=` is
+# stub-safe and still tracks pyproject.toml via installed dist metadata.
+try:
+    _VERSION = _dist_version("wasmagent-train-replay")
+except PackageNotFoundError:  # source checkout without `pip install`
+    _VERSION = "0.0.0+unknown"
+
 console = Console()
 
 
 @click.group()
-@click.version_option()
+@click.version_option(version=_VERSION)
 def cli() -> None:
     """wasmagent-train-replay — causal evidence layer for distributed GPU training."""
 
