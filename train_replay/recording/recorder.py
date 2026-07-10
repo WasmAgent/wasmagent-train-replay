@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ..collector.flight_recorder import CollectiveEvent
-from .evidence import EpochEvidenceBundle, TrainActionEvidence
+from .evidence import AEPRecord, EpochEvidenceBundle
 from .modes import RecordingMode, RiskContext, SideEffectClass, compile_recording_policy
 
 
@@ -31,7 +31,7 @@ class EpochRecorder:
             side_effect_class=_collective_side_effect(evt.collective_type)
         )
         policy = compile_recording_policy(ctx)
-        self._bundle.actions.append(TrainActionEvidence(
+        self._bundle.actions.append(AEPRecord(
             action_id=f"r{evt.rank}:seq{evt.sequence_id}",
             rank=evt.rank,
             step=evt.sequence_id,

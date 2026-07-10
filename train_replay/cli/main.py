@@ -2,31 +2,42 @@
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _dist_version
 from pathlib import Path
 
 import click
 from rich.console import Console
 from rich.table import Table
 
+# Resolved explicitly (rather than click's runtime `package_name=`) because the
+# click type stub bundled here does not declare that kwarg; `version=` is
+# stub-safe and still tracks pyproject.toml via installed dist metadata.
+try:
+    _VERSION = _dist_version("wasmagent-train-replay")
+except PackageNotFoundError:  # source checkout without `pip install`
+    _VERSION = "0.0.0+unknown"
+
 console = Console()
 
 
 @click.group()
-@click.version_option()
+@click.version_option(version=_VERSION)
 def cli() -> None:
     """wasmagent-train-replay — causal evidence layer for distributed GPU training."""
 
 
 @cli.command()
-@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("dump_path", type=click.Path(exists=True))
 @click.option("--rank", "-r", type=int, default=None, help="Filter to specific rank")
-def ingest(dump_path: Path, rank: int | None) -> None:
+def ingest(dump_path: str, rank: int | None) -> None:
     """Ingest a PyTorch Flight Recorder dump and build the causal graph."""
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.graph.builder import build_from_events
 
-    console.print(f"[bold]Loading[/bold] {dump_path}")
-    events = load_flight_recorder(dump_path)
+    dump = Path(dump_path)
+    console.print(f"[bold]Loading[/bold] {dump}")
+    events = load_flight_recorder(dump)
     if rank is not None:
         events = [e for e in events if e.rank == rank]
     console.print(f"Loaded [cyan]{len(events)}[/cyan] collective events")
@@ -38,14 +49,14 @@ def ingest(dump_path: Path, rank: int | None) -> None:
 
 @cli.command()
 @click.argument("entity_id")
-@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))
-def trace(entity_id: str, dump_path: Path) -> None:
+@click.argument("dump_path", type=click.Path(exists=True))
+def trace(entity_id: str, dump_path: str) -> None:
     """Trace the causal ancestors of a tensor entity."""
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.graph.builder import build_from_events
     from train_replay.replay.replayer import EpochReplayer
 
-    events = load_flight_recorder(dump_path)
+    events = load_flight_recorder(Path(dump_path))
     graph = build_from_events(events)
     replayer = EpochReplayer(graph)
     ancestors = replayer.find_root_cause(entity_id)
@@ -58,16 +69,16 @@ def trace(entity_id: str, dump_path: Path) -> None:
 
 
 @cli.command()
-@click.argument("dump_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("dump_path", type=click.Path(exists=True))
 @click.option("--run-id", default="dev-run", show_default=True)
 @click.option("--epoch", default=0, type=int, show_default=True)
-def record(dump_path: Path, run_id: str, epoch: int) -> None:
+def record(dump_path: str, run_id: str, epoch: int) -> None:
     """Record AEP evidence for all collectives in a Flight Recorder dump."""
 
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.recording.recorder import EpochRecorder
 
-    events = load_flight_recorder(dump_path)
+    events = load_flight_recorder(Path(dump_path))
     recorder = EpochRecorder(run_id=run_id, epoch=epoch)
     for evt in events:
         recorder.record_collective(evt)

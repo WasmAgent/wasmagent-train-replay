@@ -30,6 +30,7 @@ train_replay/      — main package
   graph/           — PROV-DM causal graph builder
   evidence/        — AEP evidence recording and signing
   cli/             — CLI for ingest, trace, replay
+docs/              — architecture, protocol, integration, CLI reference
 tests/             — pytest test suite
 examples/          — example Flight Recorder dumps and usage
 ```
@@ -56,18 +57,22 @@ examples/          — example Flight Recorder dumps and usage
 - `replay/replayer.py` — EpochReplayer.find_root_cause() and suspicious_actions()
 - `signing/signer.py` — Ed25519 signing of bundles (NO TESTS YET)
 - CLI: `ingest`, `trace`, `record` commands
+- `docs/` — architecture, protocol, integration, CLI reference
 
 ### Missing (open issues)
 - CLI `replay` subcommand (issue #10) — EpochReplayer exists, just needs CLI wiring
 - Tests for `profiler_hook` and `signing` (issue #11)
 - Multi-rank integration test (issue #12)
 
-
-## Key references — no docs/ directory
+## Key references
 
 | Reference | What it covers |
 |-----------|---------------|
 | `README.md` | Architecture, quick start, CLI commands |
+| `docs/architecture.md` | System flow, component responsibilities, PROV-DM data model, recording policy, Ed25519 signing |
+| `docs/protocol.md` | Field-by-field schemas for `EpochEvidenceBundle`, `AEPRecord`, `CollectiveEvent`, and `TensorEvent` |
+| `docs/integration.md` | Wiring `EvidenceProfilerHook` into a training loop, collecting Flight Recorder dumps, end-to-end trace example |
+| `docs/cli-reference.md` | Complete reference for the `ingest`, `trace`, and `record` subcommands |
 | `train_replay/graph/prov_graph.py` | PROV-DM graph — the core data model |
 | `train_replay/recording/evidence.py` | EpochEvidenceBundle — the signed record format |
 | `train_replay/collector/flight_recorder.py` | How PyTorch FR dumps are parsed |
@@ -85,6 +90,7 @@ and its test to understand the existing contract before modifying.
 - [x] #3 CONTRIBUTING.md
 - [x] #5 fix causal graph traversal
 - [x] #8 node importance scoring
+- [x] #14 docs: create docs/ directory with architecture, protocol, integration, and CLI reference
 - [ ] #10 feat: replay CLI subcommand
 - [ ] #11 test: EvidenceProfilerHook + Ed25519 signing tests
 - [ ] #12 test: multi-rank integration test

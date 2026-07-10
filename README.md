@@ -40,7 +40,7 @@ PyTorch Flight Recorder dump (.pkl)
 ┌─────────────────────────┐
 │  recording              │  AEP evidence collection
 │  ├── modes.py           │  RecordingMode + compile_recording_policy
-│  ├── evidence.py        │  TrainActionEvidence + EpochEvidenceBundle
+│  ├── evidence.py        │  AEPRecord + EpochEvidenceBundle
 │  └── recorder.py        │  EpochRecorder (per-epoch accumulator)
 └────────────┬────────────┘
              │
@@ -73,6 +73,17 @@ train-replay trace "tensor:2:3:out" path/to/nccl_trace.pkl
 # CLI: record AEP evidence
 train-replay record path/to/nccl_trace.pkl --run-id my-run --epoch 5
 ```
+
+## Documentation
+
+The [`docs/`](docs/) directory holds the full reference:
+
+| Document | What it covers |
+|---|---|
+| [docs/architecture.md](docs/architecture.md) | System flow, component responsibilities, the PROV-DM data model, recording policy, and Ed25519 signing. |
+| [docs/protocol.md](docs/protocol.md) | Field-by-field schemas for `EpochEvidenceBundle`, `AEPRecord`, `CollectiveEvent`, and `TensorEvent`. |
+| [docs/integration.md](docs/integration.md) | Wiring `EvidenceProfilerHook` into a training loop, collecting Flight Recorder dumps, and an end-to-end trace example. |
+| [docs/cli-reference.md](docs/cli-reference.md) | Complete reference for the `ingest`, `trace`, and `record` subcommands. |
 
 ## Recording modes
 
