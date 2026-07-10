@@ -41,3 +41,6 @@ class EpochEvidenceBundle:
 
     def digest(self) -> str:
         return hashlib.sha256(self.canonical_bytes()).hexdigest()
+
+
+TrainActionEvidence = AEPRecord
