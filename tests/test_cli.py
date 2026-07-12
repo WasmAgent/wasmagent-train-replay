@@ -272,3 +272,72 @@ def test_resume_when_not_in_safe_mode() -> None:
     result = runner.invoke(cli, ["resume"])
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "Safe mode cleared" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Safe mode enforcement tests
+# ---------------------------------------------------------------------------
+
+
+def test_record_blocked_by_safe_mode(tmp_path: Path) -> None:
+    """record command is blocked when safe mode is active."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.trigger()
+    try:
+        trace_path = tmp_path / "trace.pkl"
+        _write_sample_trace(trace_path)
+        runner = CliRunner()
+        result = runner.invoke(cli, ["record", str(trace_path)])
+        assert result.exit_code != 0, f"Expected non-zero exit: {result.output}"
+        assert "blocked by safe mode" in result.output.lower()
+    finally:
+        global_safe_mode.clear()
+
+
+def test_record_succeeds_when_safe_mode_off(tmp_path: Path) -> None:
+    """record command succeeds when safe mode is inactive."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.clear()
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["record", str(trace_path)])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "Recorded" in result.output
+
+
+def test_replay_blocked_by_safe_mode(tmp_path: Path) -> None:
+    """replay command is blocked when safe mode is active."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.trigger()
+    try:
+        trace_path = tmp_path / "trace.pkl"
+        _write_sample_trace(trace_path)
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            ["replay", str(trace_path), "tensor:0:1:out", "--rank", "0"],
+        )
+        assert result.exit_code != 0, f"Expected non-zero exit: {result.output}"
+        assert "blocked by safe mode" in result.output.lower()
+    finally:
+        global_safe_mode.clear()
+
+
+def test_replay_succeeds_when_safe_mode_off(tmp_path: Path) -> None:
+    """replay command succeeds when safe mode is inactive."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.clear()
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["replay", str(trace_path), "tensor:0:1:out", "--rank", "0"],
+    )
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "Replay Result" in result.output

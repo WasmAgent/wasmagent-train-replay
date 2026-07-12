@@ -58,10 +58,10 @@ def safe_mode(
         console.print("[green]Safe mode deactivated.[/green]")
         return
 
-    if show_status or not (activate or deactivate):
-        active = global_safe_mode.status()
-        if active:
-            console.print("[yellow]Safe mode is ON[/yellow]")
-        else:
-            console.print("[green]Safe mode is OFF[/green]")
-        return
+    # Default: show current status
+    active = global_safe_mode.status()
+    if active:
+        console.print("[yellow]Safe mode is ON[/yellow]")
+    else:
+        console.print("[green]Safe mode is OFF[/green]")
+    return

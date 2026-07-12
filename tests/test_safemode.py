@@ -88,10 +88,9 @@ def test_thread_safety() -> None:
     assert safe.status() is False  # last clear wins
 
 
-def test_resume_clears_safe_mode() -> None:
-    """resume command calls clear(), which deactivates safe mode."""
+def test_check_with_operation_name_in_message() -> None:
+    """check(operation) includes the operation name in the error."""
     safe = SafeMode()
     safe.trigger()
-    assert safe.status() is True
-    safe.clear()  # what resume does
-    assert safe.status() is False
+    with pytest.raises(SafeModeError, match="'replay' blocked by safe mode"):
+        safe.check("replay")

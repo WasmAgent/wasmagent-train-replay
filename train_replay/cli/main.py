@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from train_replay.cli.admin import admin
-from train_replay.cli.safemode import global_safe_mode
+from train_replay.cli.safemode import SafeModeError, global_safe_mode
 
 # Resolved explicitly (rather than click's runtime `package_name=`) because the
 # click type stub bundled here does not declare that kwarg; `version=` is
@@ -80,6 +80,10 @@ def trace(entity_id: str, dump_path: str) -> None:
 @click.option("--epoch", default=0, type=int, show_default=True)
 def record(dump_path: str, run_id: str, epoch: int) -> None:
     """Record AEP evidence for all collectives in a Flight Recorder dump."""
+    try:
+        global_safe_mode.check("record")
+    except SafeModeError as exc:
+        raise click.ClickException(str(exc))
 
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.recording.recorder import EpochRecorder
@@ -112,6 +116,10 @@ def resume() -> None:
 @click.option("--epoch", default=0, type=int, show_default=True)
 def replay(dump_path: str, entity_id: str, rank: int, run_id: str, epoch: int) -> None:
     """Replay an epoch and trace causal chains for a tensor entity."""
+    try:
+        global_safe_mode.check("replay")
+    except SafeModeError as exc:
+        raise click.ClickException(str(exc))
 
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.graph.builder import build_from_events
