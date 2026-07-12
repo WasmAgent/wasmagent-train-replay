@@ -135,4 +135,8 @@ def replay(dump_path: str, entity_id: str, rank: int, run_id: str, epoch: int) -
         console.print(f"  {anc}")
     console.print(f"\nSuspicious actions ([cyan]{len(result.suspicious_actions)}[/cyan]):")
     for a in result.suspicious_actions:
-        console.print(f"  rank={a.rank} step={a.step} type={a.collective_type} mode={a.recording_mode}")
+        info = (
+            f"  rank={a.rank} step={a.step}"
+            f" type={a.collective_type} mode={a.recording_mode}"
+        )
+        console.print(info)

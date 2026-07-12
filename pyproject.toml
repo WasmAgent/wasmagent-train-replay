@@ -58,3 +58,12 @@ ignore_missing_imports = true
 module = ["google", "google.*"]
 follow_imports = "skip"
 ignore_missing_imports = true
+
+# torch re-exports numpy types and mypy follows the import chain
+# torch → numpy.  numpy 2.5 ships PEP-695 type statements (Python 3.12+) in its
+# bundled .pyi, which abort mypy when python_version < "3.12".  Tell mypy not to
+# follow imports out of torch so numpy stubs are never parsed.
+[[tool.mypy.overrides]]
+module = ["torch", "torch.*"]
+follow_imports = "skip"
+ignore_missing_imports = true

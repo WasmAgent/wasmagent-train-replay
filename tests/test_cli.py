@@ -170,3 +170,105 @@ def test_replay_with_suspicious_actions(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0, f"Exit code {result.exit_code}: {result.output}"
     assert "Suspicious actions" in result.output
+
+
+# ---------------------------------------------------------------------------
+# admin safe-mode subcommand tests
+# ---------------------------------------------------------------------------
+
+
+def test_admin_safe_mode_status_default_off() -> None:
+    """admin safe-mode --status reports OFF by default."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.clear()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["admin", "safe-mode", "--status"])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "OFF" in result.output
+
+
+def test_admin_safe_mode_on() -> None:
+    """admin safe-mode --on activates safe mode."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.clear()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["admin", "safe-mode", "--on"])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "activated" in result.output.lower()
+    assert global_safe_mode.status() is True
+
+
+def test_admin_safe_mode_off() -> None:
+    """admin safe-mode --off deactivates safe mode."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.trigger()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["admin", "safe-mode", "--off"])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "deactivated" in result.output.lower()
+    assert global_safe_mode.status() is False
+
+
+def test_admin_safe_mode_mutually_exclusive() -> None:
+    """admin safe-mode --on --off aborts with error."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.clear()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["admin", "safe-mode", "--on", "--off"])
+    assert result.exit_code != 0
+    assert "mutually exclusive" in result.output.lower()
+
+
+def test_admin_safe_mode_no_flags_shows_status() -> None:
+    """admin safe-mode with no flags defaults to showing status."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.clear()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["admin", "safe-mode"])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "OFF" in result.output
+
+
+def test_admin_safe_mode_status_when_active() -> None:
+    """admin safe-mode --status reports ON when active."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.trigger()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["admin", "safe-mode", "--status"])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "ON" in result.output
+
+
+# ---------------------------------------------------------------------------
+# resume command tests
+# ---------------------------------------------------------------------------
+
+
+def test_resume_clears_safe_mode() -> None:
+    """resume command clears safe mode."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.trigger()
+    assert global_safe_mode.status() is True
+    runner = CliRunner()
+    result = runner.invoke(cli, ["resume"])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "Safe mode cleared" in result.output
+    assert global_safe_mode.status() is False
+
+
+def test_resume_when_not_in_safe_mode() -> None:
+    """resume is a no-op when safe mode is already off."""
+    from train_replay.cli.safemode import global_safe_mode
+
+    global_safe_mode.clear()
+    runner = CliRunner()
+    result = runner.invoke(cli, ["resume"])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "Safe mode cleared" in result.output
