@@ -1,15 +1,15 @@
 # Bot State
 
-_Last updated: 2026-07-12 14:08 UTC by patrol_
+_Last updated: 2026-07-12 15:10 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 4 |
+| Pending | 3 |
 | Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 384 |
+| Completed/Merged (all time) | 387 |
 
 ## Recent Activity (last 5)
 
@@ -18,7 +18,7 @@ _Last updated: 2026-07-12 14:08 UTC by patrol_
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
-| #35 | replay CLI subcommand missing (EpochReplayer exists but n... | completed/complexity_gate_split | 2026-07-12 |
+| #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
 
 ## Waiting for Human
