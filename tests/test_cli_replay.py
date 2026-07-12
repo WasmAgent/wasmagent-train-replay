@@ -11,7 +11,12 @@ from train_replay.cli.main import cli
 
 
 def _make_dump(tmp_path: Path) -> Path:
-    """Create a minimal Flight Recorder dump for testing."""
+    """Create a minimal Flight Recorder dump for testing.
+
+    Uses ``pickle.dumps`` to serialize a **self-constructed plain dict** into
+    the on-disk format expected by ``load_flight_recorder``.  No untrusted
+    data is deserialized — this is purely test-fixture creation.
+    """
     dump = tmp_path / "test_dump.pkl"
     raw = {
         "entries": [
