@@ -1,29 +1,28 @@
 # Bot State
 
-_Last updated: 2026-07-12 12:10 UTC by patrol_
+_Last updated: 2026-07-12 12:38 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 2 |
-| Active (running/reviewing) | 0 |
-| Blocked | 2 |
-| Completed/Merged (all time) | 379 |
+| Pending | 3 |
+| Active (running/reviewing) | 1 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 381 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #35 | replay CLI subcommand missing (EpochReplayer exists but n... | completed/complexity_gate_split | 2026-07-12 |
+| #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
 | #39 | panel-harvest #39 | completed/maintenance_done | 2026-07-12 |
 | #38 | panel-harvest #38 | completed/maintenance_done | 2026-07-12 |
-| #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
-| #39 | [discussion] code-review: Documentation hardcoding preven... | completed/panel_promoted | 2026-07-12 |
 
 ## Waiting for Human
 
-- #35: replay CLI subcommand missing (EpochReplayer exists but not wired to CLI)
 - #34: safemode: SAFE_MODE machinery + `admin safe-mode` subcommand not implemented
 - #33: rest_retry.go: NewRestClient signature mismatch breaks test compilation + retry-after handling incomplete
 
