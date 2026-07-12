@@ -85,3 +85,50 @@ def record(dump_path: str, run_id: str, epoch: int) -> None:
     bundle = recorder.bundle()
     console.print(f"Recorded [cyan]{len(bundle.actions)}[/cyan] actions")
     console.print(f"Bundle digest: [bold]{bundle.digest()}[/bold]")
+
+
+@cli.command()
+@click.argument("entity_id")
+@click.argument("dump_path", type=click.Path(exists=True))
+@click.option("--rank", "-r", type=int, default=0, show_default=True, help="Rank to replay")
+@click.option("--run-id", default="dev-run", show_default=True)
+@click.option("--epoch", default=0, type=int, show_default=True)
+def replay(entity_id: str, dump_path: str, rank: int, run_id: str, epoch: int) -> None:
+    """Replay an epoch to find causal ancestors and suspicious actions."""
+    from train_replay.collector.flight_recorder import load_flight_recorder
+    from train_replay.graph.builder import build_from_events
+    from train_replay.recording.recorder import EpochRecorder
+    from train_replay.replay.replayer import EpochReplayer
+
+    events = load_flight_recorder(Path(dump_path))
+    graph = build_from_events(events)
+
+    recorder = EpochRecorder(run_id=run_id, epoch=epoch)
+    for evt in events:
+        recorder.record_collective(evt)
+    bundle = recorder.bundle()
+
+    replayer = EpochReplayer(graph)
+    result = replayer.replay_rank(bundle, rank=rank, entity_id=entity_id)
+
+    console.print(f"[bold]Replay result[/bold] — epoch {result.epoch}, rank {result.rank}")
+
+    if result.causal_ancestors:
+        table = Table(title="Causal ancestors")
+        table.add_column("Activity ID", style="cyan")
+        for a in result.causal_ancestors:
+            table.add_row(a)
+        console.print(table)
+    else:
+        console.print("[dim]No causal ancestors found.[/dim]")
+
+    if result.suspicious_actions:
+        table = Table(title="Suspicious actions (FULL mode)")
+        table.add_column("Action ID", style="red")
+        table.add_column("Collective", style="yellow")
+        table.add_column("Rank", justify="right")
+        for sa in result.suspicious_actions:
+            table.add_row(sa.action_id, sa.collective_type, str(sa.rank))
+        console.print(table)
+    else:
+        console.print("[dim]No suspicious actions found.[/dim]")
