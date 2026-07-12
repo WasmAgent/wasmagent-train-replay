@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-12 11:10 UTC by patrol_
+_Last updated: 2026-07-12 12:10 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 4 |
+| Pending | 2 |
 | Active (running/reviewing) | 0 |
 | Blocked | 2 |
-| Completed/Merged (all time) | 375 |
+| Completed/Merged (all time) | 379 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
-| #39 | [discussion] code-review: Documentation hardcoding preven... | completed/panel_synthesized | 2026-07-12 |
-| #38 | [discussion] code-review: Data integrity anomaly in BOT_S... | completed/panel_synthesized | 2026-07-12 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
+| #39 | panel-harvest #39 | completed/maintenance_done | 2026-07-12 |
+| #38 | panel-harvest #38 | completed/maintenance_done | 2026-07-12 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
-| #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-12 |
+| #39 | [discussion] code-review: Documentation hardcoding preven... | completed/panel_promoted | 2026-07-12 |
 
 ## Waiting for Human
 
