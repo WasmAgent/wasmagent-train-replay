@@ -62,7 +62,9 @@ class SafeMode:
                 raise SafeModeError(msg)
 
 
-# Global singleton used by the CLI and recording machinery.
-# Importers should use this shared instance rather than creating their own
-# to ensure a consistent view across the process.
-global_safe_mode = SafeMode()
+# NOTE: SafeMode is intentionally NOT instantiated at module import time.
+# A module-level mutable singleton leaks state across tests that share an
+# interpreter (and across any parallel/async runner), producing
+# non-deterministic failures. Callers construct their own instance, and the
+# CLI carries one per invocation through the click ``Context.obj``
+# (see :func:`train_replay.cli.main.cli`).

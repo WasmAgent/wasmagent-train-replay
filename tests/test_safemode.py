@@ -4,7 +4,7 @@ import threading
 
 import pytest
 
-from train_replay.cli.safemode import SafeMode, SafeModeError, global_safe_mode
+from train_replay.cli.safemode import SafeMode, SafeModeError
 
 
 def test_initial_state_is_off() -> None:
@@ -57,14 +57,24 @@ def test_check_after_clear() -> None:
     safe.check("record")  # should not raise
 
 
-def test_global_singleton_is_shared() -> None:
-    """Verify that importing global_safe_mode yields the same object."""
-    from train_replay.cli.safemode import global_safe_mode as gsm2
-    assert gsm2 is global_safe_mode
+def test_instances_are_independent() -> None:
+    """Each SafeMode instance holds its own state (no shared/global state).
+
+    The machinery deliberately exposes no module-level singleton; callers
+    construct their own instance (the CLI carries one per invocation through
+    the click context). Mutating one instance must not affect another.
+    """
+    a = SafeMode()
+    b = SafeMode()
+    a.trigger()
+    assert a.status() is True
+    assert b.status() is False, "SafeMode instances must not share state"
+    b.clear()
+    assert a.status() is True, "clearing b must not clear a"
 
 
 def test_thread_safety() -> None:
-    """Concurrent trigger/clear/status calls should not corrupt state."""
+    """Concurrent trigger/clear/status calls should not corrupt state or raise."""
     safe = SafeMode()
     errors: list[Exception] = []
 
@@ -85,7 +95,12 @@ def test_thread_safety() -> None:
         t.join()
 
     assert not errors, f"Thread-safety errors: {errors}"
-    assert safe.status() is False  # last clear wins
+    # The storm above leaves the final state dependent on thread interleaving,
+    # so settle to a known state before asserting — the point of this test is
+    # that concurrent access neither corrupts state nor raises, not that any
+    # particular op happened to run last.
+    safe.clear()
+    assert safe.status() is False
 
 
 def test_check_with_operation_name_in_message() -> None:

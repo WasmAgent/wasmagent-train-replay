@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from train_replay.cli.admin import admin
-from train_replay.cli.safemode import SafeModeError, global_safe_mode
+from train_replay.cli.safemode import SafeMode, SafeModeError
 
 # Resolved explicitly (rather than click's runtime `package_name=`) because the
 # click type stub bundled here does not declare that kwarg; `version=` is
@@ -26,8 +26,16 @@ console = Console()
 
 @click.group()
 @click.version_option(version=_VERSION)
-def cli() -> None:
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     """wasmagent-train-replay — causal evidence layer for distributed GPU training."""
+    # Each CLI invocation carries its own SafeMode through the command tree via
+    # the click context. ``ensure_object`` keeps an ``obj`` that a caller (or a
+    # test harness) passed in via ``CliRunner.invoke(..., obj=...)`` so the
+    # instance is shared within a single invocation but never across them.
+    ctx.ensure_object(dict)
+    if "safe_mode" not in ctx.obj:
+        ctx.obj["safe_mode"] = SafeMode()
 
 
 cli.add_command(admin)
@@ -78,10 +86,12 @@ def trace(entity_id: str, dump_path: str) -> None:
 @click.argument("dump_path", type=click.Path(exists=True))
 @click.option("--run-id", default="dev-run", show_default=True)
 @click.option("--epoch", default=0, type=int, show_default=True)
-def record(dump_path: str, run_id: str, epoch: int) -> None:
+@click.pass_context
+def record(ctx: click.Context, dump_path: str, run_id: str, epoch: int) -> None:
     """Record AEP evidence for all collectives in a Flight Recorder dump."""
+    safe_mode: SafeMode = ctx.obj["safe_mode"]
     try:
-        global_safe_mode.check("record")
+        safe_mode.check("record")
     except SafeModeError as exc:
         raise click.ClickException(str(exc))
 
@@ -98,13 +108,15 @@ def record(dump_path: str, run_id: str, epoch: int) -> None:
 
 
 @cli.command()
-def resume() -> None:
+@click.pass_context
+def resume(ctx: click.Context) -> None:
     """Exit safe mode and resume normal operation.
 
     This is the operator's quick way to clear a safe-mode lock without
     specifying the full ``admin safe-mode --off`` subcommand.
     """
-    global_safe_mode.clear()
+    safe_mode: SafeMode = ctx.obj["safe_mode"]
+    safe_mode.clear()
     console.print("[green]Safe mode cleared — normal operation resumed.[/green]")
 
 
@@ -114,10 +126,19 @@ def resume() -> None:
 @click.option("--rank", "-r", type=int, default=0, help="Rank to replay")
 @click.option("--run-id", default="dev-run", show_default=True)
 @click.option("--epoch", default=0, type=int, show_default=True)
-def replay(dump_path: str, entity_id: str, rank: int, run_id: str, epoch: int) -> None:
+@click.pass_context
+def replay(
+    ctx: click.Context,
+    dump_path: str,
+    entity_id: str,
+    rank: int,
+    run_id: str,
+    epoch: int,
+) -> None:
     """Replay an epoch and trace causal chains for a tensor entity."""
+    safe_mode: SafeMode = ctx.obj["safe_mode"]
     try:
-        global_safe_mode.check("replay")
+        safe_mode.check("replay")
     except SafeModeError as exc:
         raise click.ClickException(str(exc))
 

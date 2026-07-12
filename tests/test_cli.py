@@ -5,9 +5,24 @@ from __future__ import annotations
 import pickle
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from train_replay.cli.main import cli
+from train_replay.cli.safemode import SafeMode
+
+
+@pytest.fixture
+def safe_mode() -> SafeMode:
+    """A fresh SafeMode instance per test.
+
+    Each test injects this into the CLI via ``CliRunner.invoke(...,
+    obj={"safe_mode": safe_mode})`` so the click context carries it through the
+    command tree. This gives every test full isolation — no module-level global
+    is mutated, so there is nothing to reset and no risk of cross-test
+    pollution under pytest-xdist or any shared-interpreter runner.
+    """
+    return SafeMode()
 
 
 def _write_sample_trace(path: Path) -> None:
@@ -174,73 +189,75 @@ def test_replay_with_suspicious_actions(tmp_path: Path) -> None:
 
 # ---------------------------------------------------------------------------
 # admin safe-mode subcommand tests
+#
+# Every test injects a fresh ``safe_mode`` fixture into the CLI via
+# ``CliRunner.invoke(..., obj={"safe_mode": safe_mode})``. Because the click
+# context carries the instance (rather than reaching for a module-level
+# singleton), each test starts from a clean state with nothing to reset and no
+# possibility of cross-test pollution under any parallel runner.
 # ---------------------------------------------------------------------------
 
 
-def test_admin_safe_mode_status_default_off() -> None:
+def test_admin_safe_mode_status_default_off(safe_mode: SafeMode) -> None:
     """admin safe-mode --status reports OFF by default."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.clear()
     runner = CliRunner()
-    result = runner.invoke(cli, ["admin", "safe-mode", "--status"])
+    result = runner.invoke(
+        cli, ["admin", "safe-mode", "--status"], obj={"safe_mode": safe_mode}
+    )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "OFF" in result.output
 
 
-def test_admin_safe_mode_on() -> None:
+def test_admin_safe_mode_on(safe_mode: SafeMode) -> None:
     """admin safe-mode --on activates safe mode."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.clear()
     runner = CliRunner()
-    result = runner.invoke(cli, ["admin", "safe-mode", "--on"])
+    result = runner.invoke(
+        cli, ["admin", "safe-mode", "--on"], obj={"safe_mode": safe_mode}
+    )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "activated" in result.output.lower()
-    assert global_safe_mode.status() is True
+    assert safe_mode.status() is True
 
 
-def test_admin_safe_mode_off() -> None:
+def test_admin_safe_mode_off(safe_mode: SafeMode) -> None:
     """admin safe-mode --off deactivates safe mode."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.trigger()
+    safe_mode.trigger()
     runner = CliRunner()
-    result = runner.invoke(cli, ["admin", "safe-mode", "--off"])
+    result = runner.invoke(
+        cli, ["admin", "safe-mode", "--off"], obj={"safe_mode": safe_mode}
+    )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "deactivated" in result.output.lower()
-    assert global_safe_mode.status() is False
+    assert safe_mode.status() is False
 
 
-def test_admin_safe_mode_mutually_exclusive() -> None:
+def test_admin_safe_mode_mutually_exclusive(safe_mode: SafeMode) -> None:
     """admin safe-mode --on --off aborts with error."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.clear()
     runner = CliRunner()
-    result = runner.invoke(cli, ["admin", "safe-mode", "--on", "--off"])
+    result = runner.invoke(
+        cli, ["admin", "safe-mode", "--on", "--off"], obj={"safe_mode": safe_mode}
+    )
     assert result.exit_code != 0
     assert "mutually exclusive" in result.output.lower()
 
 
-def test_admin_safe_mode_no_flags_shows_status() -> None:
+def test_admin_safe_mode_no_flags_shows_status(safe_mode: SafeMode) -> None:
     """admin safe-mode with no flags defaults to showing status."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.clear()
     runner = CliRunner()
-    result = runner.invoke(cli, ["admin", "safe-mode"])
+    result = runner.invoke(
+        cli, ["admin", "safe-mode"], obj={"safe_mode": safe_mode}
+    )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "OFF" in result.output
 
 
-def test_admin_safe_mode_status_when_active() -> None:
+def test_admin_safe_mode_status_when_active(safe_mode: SafeMode) -> None:
     """admin safe-mode --status reports ON when active."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.trigger()
+    safe_mode.trigger()
     runner = CliRunner()
-    result = runner.invoke(cli, ["admin", "safe-mode", "--status"])
+    result = runner.invoke(
+        cli, ["admin", "safe-mode", "--status"], obj={"safe_mode": safe_mode}
+    )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "ON" in result.output
 
@@ -250,26 +267,21 @@ def test_admin_safe_mode_status_when_active() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_resume_clears_safe_mode() -> None:
+def test_resume_clears_safe_mode(safe_mode: SafeMode) -> None:
     """resume command clears safe mode."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.trigger()
-    assert global_safe_mode.status() is True
+    safe_mode.trigger()
+    assert safe_mode.status() is True
     runner = CliRunner()
-    result = runner.invoke(cli, ["resume"])
+    result = runner.invoke(cli, ["resume"], obj={"safe_mode": safe_mode})
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "Safe mode cleared" in result.output
-    assert global_safe_mode.status() is False
+    assert safe_mode.status() is False
 
 
-def test_resume_when_not_in_safe_mode() -> None:
+def test_resume_when_not_in_safe_mode(safe_mode: SafeMode) -> None:
     """resume is a no-op when safe mode is already off."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.clear()
     runner = CliRunner()
-    result = runner.invoke(cli, ["resume"])
+    result = runner.invoke(cli, ["resume"], obj={"safe_mode": safe_mode})
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "Safe mode cleared" in result.output
 
@@ -279,65 +291,55 @@ def test_resume_when_not_in_safe_mode() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_record_blocked_by_safe_mode(tmp_path: Path) -> None:
+def test_record_blocked_by_safe_mode(tmp_path: Path, safe_mode: SafeMode) -> None:
     """record command is blocked when safe mode is active."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.trigger()
-    try:
-        trace_path = tmp_path / "trace.pkl"
-        _write_sample_trace(trace_path)
-        runner = CliRunner()
-        result = runner.invoke(cli, ["record", str(trace_path)])
-        assert result.exit_code != 0, f"Expected non-zero exit: {result.output}"
-        assert "blocked by safe mode" in result.output.lower()
-    finally:
-        global_safe_mode.clear()
-
-
-def test_record_succeeds_when_safe_mode_off(tmp_path: Path) -> None:
-    """record command succeeds when safe mode is inactive."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.clear()
+    safe_mode.trigger()
     trace_path = tmp_path / "trace.pkl"
     _write_sample_trace(trace_path)
     runner = CliRunner()
-    result = runner.invoke(cli, ["record", str(trace_path)])
+    result = runner.invoke(
+        cli, ["record", str(trace_path)], obj={"safe_mode": safe_mode}
+    )
+    assert result.exit_code != 0, f"Expected non-zero exit: {result.output}"
+    assert "blocked by safe mode" in result.output.lower()
+
+
+def test_record_succeeds_when_safe_mode_off(tmp_path: Path, safe_mode: SafeMode) -> None:
+    """record command succeeds when safe mode is inactive."""
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["record", str(trace_path)], obj={"safe_mode": safe_mode}
+    )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "Recorded" in result.output
 
 
-def test_replay_blocked_by_safe_mode(tmp_path: Path) -> None:
+def test_replay_blocked_by_safe_mode(tmp_path: Path, safe_mode: SafeMode) -> None:
     """replay command is blocked when safe mode is active."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.trigger()
-    try:
-        trace_path = tmp_path / "trace.pkl"
-        _write_sample_trace(trace_path)
-        runner = CliRunner()
-        result = runner.invoke(
-            cli,
-            ["replay", str(trace_path), "tensor:0:1:out", "--rank", "0"],
-        )
-        assert result.exit_code != 0, f"Expected non-zero exit: {result.output}"
-        assert "blocked by safe mode" in result.output.lower()
-    finally:
-        global_safe_mode.clear()
-
-
-def test_replay_succeeds_when_safe_mode_off(tmp_path: Path) -> None:
-    """replay command succeeds when safe mode is inactive."""
-    from train_replay.cli.safemode import global_safe_mode
-
-    global_safe_mode.clear()
+    safe_mode.trigger()
     trace_path = tmp_path / "trace.pkl"
     _write_sample_trace(trace_path)
     runner = CliRunner()
     result = runner.invoke(
         cli,
         ["replay", str(trace_path), "tensor:0:1:out", "--rank", "0"],
+        obj={"safe_mode": safe_mode},
+    )
+    assert result.exit_code != 0, f"Expected non-zero exit: {result.output}"
+    assert "blocked by safe mode" in result.output.lower()
+
+
+def test_replay_succeeds_when_safe_mode_off(tmp_path: Path, safe_mode: SafeMode) -> None:
+    """replay command succeeds when safe mode is inactive."""
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["replay", str(trace_path), "tensor:0:1:out", "--rank", "0"],
+        obj={"safe_mode": safe_mode},
     )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "Replay Result" in result.output

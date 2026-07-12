@@ -9,7 +9,7 @@ from __future__ import annotations
 import click
 from rich.console import Console
 
-from train_replay.cli.safemode import global_safe_mode
+from train_replay.cli.safemode import SafeMode
 
 console = Console()
 
@@ -26,7 +26,9 @@ def admin() -> None:
               help="Deactivate safe mode (unlock the system).")
 @click.option("--status", "show_status", is_flag=True, default=False,
               help="Show whether safe mode is active.")
+@click.pass_context
 def safe_mode(
+    ctx: click.Context,
     activate: bool,
     deactivate: bool,
     show_status: bool,
@@ -44,22 +46,23 @@ def safe_mode(
 
         train-replay admin safe-mode --off
     """
+    safe: SafeMode = ctx.obj["safe_mode"]
     if activate and deactivate:
         console.print("[red]--on and --off are mutually exclusive.[/red]")
         raise click.Abort()
 
     if activate:
-        global_safe_mode.trigger()
+        safe.trigger()
         console.print("[green]Safe mode activated.[/green]")
         return
 
     if deactivate:
-        global_safe_mode.clear()
+        safe.clear()
         console.print("[green]Safe mode deactivated.[/green]")
         return
 
     # Default: show current status
-    active = global_safe_mode.status()
+    active = safe.status()
     if active:
         console.print("[yellow]Safe mode is ON[/yellow]")
     else:
