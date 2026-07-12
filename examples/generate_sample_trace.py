@@ -5,6 +5,14 @@ Usage:
 
 Produces examples/sample_trace.pkl containing synthetic NCCL collective
 events across 4 ranks with 3 steps each.
+
+Security note
+-------------
+The output is plain built-in data only (``dict``/``list``/``int``/``str``/
+``None``). ``load_flight_recorder`` deserializes every dump through a
+restricted unpickler that refuses any ``GLOBAL``/``REDUCE`` opcode, so this
+fixture — like any genuine NCCL dump — loads without exposing the loader to
+arbitrary code execution.
 """
 
 from __future__ import annotations
