@@ -11,7 +11,12 @@ import networkx as nx
 
 @dataclass
 class ProvActivity:
-    """One NCCL collective or kernel execution."""
+    """One distributed operation or kernel execution.
+
+    ``collective_type`` holds the operation name for any backend (NCCL
+    ``all_reduce``, Gloo ``allgather``, MTIA kernels, etc.).  The field name
+    is retained for backward compatibility.
+    """
     id: str
     label: str
     rank: int

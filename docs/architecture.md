@@ -84,7 +84,7 @@ recording layers never parse raw PyTorch data directly; they receive
 | Component | Module | Responsibility |
 |---|---|---|
 | **collector** | `train_replay/collector/` | Parses external inputs into typed events: Flight Recorder pickle dumps (`CollectiveEvent`) and tensor-level autograd hook events (`TensorEvent`). |
-| **graph** | `train_replay/graph/` | Builds the PROV-DM causal graph (`ProvGraph`) from events and answers causal queries (`ancestors_of`, `causal_subgraph`). |
+| **graph** | `train_replay/graph/` | Defines backend-agnostic protocols (`BackendEvent`, `GraphBuilder` in `base.py`), builds the PROV-DM causal graph (`ProvGraph`) from events, and answers causal queries (`ancestors_of`, `causal_subgraph`). |
 | **recording** | `train_replay/recording/` | Decides *what* to record per collective via the recording policy, and accumulates it into an `EpochEvidenceBundle`. |
 | **replay** | `train_replay/replay/` | Traces a tensor back to its causal ancestors and flags suspicious (FULL-mode) actions. |
 | **signing** | `train_replay/signing/` | Ed25519-signs a bundle into a DSSE-style envelope and verifies signatures. |

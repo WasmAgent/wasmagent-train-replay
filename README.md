@@ -84,6 +84,7 @@ The [`docs/`](docs/) directory holds the full reference:
 | [docs/protocol.md](docs/protocol.md) | Field-by-field schemas for `EpochEvidenceBundle`, `AEPRecord`, `CollectiveEvent`, and `TensorEvent`. |
 | [docs/integration.md](docs/integration.md) | Wiring `EvidenceProfilerHook` into a training loop, collecting Flight Recorder dumps, and an end-to-end trace example. |
 | [docs/cli-reference.md](docs/cli-reference.md) | Complete reference for the `ingest`, `trace`, and `record` subcommands. |
+| [docs/positioning.md](docs/positioning.md) | Differentiation from `fr_trace` and NCCL Inspector: tamper-proof evidence chain and framework-agnostic causal graph. |
 
 ## Recording modes
 

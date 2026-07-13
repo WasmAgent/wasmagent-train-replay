@@ -22,6 +22,25 @@ class CollectiveEvent:
     call_stack: list[str] = field(default_factory=list)
     sequence_id: int = 0
 
+    # -- BackendEvent protocol (graph/base.py) ----------------------------
+    # These properties map NCCL-specific fields to the backend-agnostic
+    # interface so CollectiveEvent satisfies the BackendEvent protocol.
+
+    @property
+    def operation_type(self) -> str:
+        """Backend-agnostic alias for ``collective_type``."""
+        return self.collective_type
+
+    @property
+    def timestamp_ns(self) -> int:
+        """Backend-agnostic alias for ``start_time_ns``."""
+        return self.start_time_ns
+
+    @property
+    def group_id(self) -> str:
+        """Backend-agnostic alias for ``process_group``."""
+        return self.process_group
+
 
 def load_flight_recorder(path: Path) -> list[CollectiveEvent]:
     """Load a Flight Recorder pickle dump produced by
