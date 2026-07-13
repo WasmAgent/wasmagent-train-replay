@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-13 07:44 UTC by patrol_
+_Last updated: 2026-07-13 08:15 UTC by patrol_
 
 ## Queue
 
@@ -8,16 +8,16 @@ _Last updated: 2026-07-13 07:44 UTC by patrol_
 |---|---|
 | Pending | 4 |
 | Active (running/reviewing) | 0 |
-| Blocked | 1 |
-| Completed/Merged (all time) | 410 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 411 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #43 | strategy: differentiate from fr_trace — focus on tamper... | merged/closed_upstream_after_failure | 2026-07-13 |
 | #46 | docs: clarify complementary relationship with NCCL Inspec... | merged/auto_closed_resolved | 2026-07-13 |
 | #32 | [discussion] explore: Proactive anomaly detection with cr... | completed/panel_promoted | 2026-07-13 |
-| #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-13 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-13 |
 | #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-13 |
 
