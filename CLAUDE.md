@@ -30,7 +30,7 @@ train_replay/      — main package
   graph/           — PROV-DM causal graph builder
   evidence/        — AEP evidence recording and signing
   cli/             — CLI for ingest, trace, replay
-docs/              — architecture, protocol, integration, CLI reference
+docs/              — architecture, protocol, integration, CLI reference, strategy
 tests/             — pytest test suite
 examples/          — example Flight Recorder dumps and usage
 ```
@@ -43,6 +43,27 @@ examples/          — example Flight Recorder dumps and usage
 - The verify command is: `pytest tests/`
 - Never use real GPU/torch in tests — use mocks and fixtures
 - Keep each function small and single-purpose
+
+## Strategic positioning
+
+**Read `docs/strategy.md` before opening new issues or designing new features.**
+
+This project's differentiation is NOT "another Flight Recorder reader." PyTorch's
+official `fr_trace` and NVIDIA NCCL Inspector already cover data collection and
+real-time performance monitoring. Our defensible niche is:
+
+1. **Tamper-evident evidence chain** — Ed25519-signed `EpochEvidenceBundle` is
+   forensic-grade; `fr_trace` outputs are local pickle files with no integrity
+   guarantee.
+2. **Framework-agnostic causal graph** — PROV-DM abstraction layer can cover
+   non-NCCL backends (Gloo, MTIA) and non-LLM training (RecSys) that official
+   tools have explicitly deferred.
+3. **Agent-automated root-cause reasoning** — causal ancestor traversal feeding
+   into an LLM-based hypothesis layer.
+
+Do NOT duplicate what `fr_trace` already does well.
+
+**SAFE_MODE** is a prerequisite for production use.
 
 ## Current implementation status
 
@@ -60,15 +81,19 @@ examples/          — example Flight Recorder dumps and usage
 - `docs/` — architecture, protocol, integration, CLI reference
 
 ### Missing (open issues)
-- CLI `replay` subcommand (issue #10) — EpochReplayer exists, just needs CLI wiring
-- Tests for `profiler_hook` and `signing` (issue #11)
-- Multi-rank integration test (issue #12)
+- CLI `replay` subcommand — issue #35 (PRs #37, #41 open)
+- Tests for `profiler_hook` and `signing` — issue #11
+- Multi-rank integration test — issue #12
+- SAFE_MODE circuit-breaker — issue #34 (PR #36 open)
+- Differentiation strategy doc in `docs/strategy.md` — issue #45 (PR #47, #48 open)
+- Agent root-cause reasoning layer — issue #44
 
 ## Key references
 
 | Reference | What it covers |
 |-----------|---------------|
 | `README.md` | Architecture, quick start, CLI commands |
+| `docs/strategy.md` | **Strategic positioning, competitive landscape, differentiation** |
 | `docs/architecture.md` | System flow, component responsibilities, PROV-DM data model, recording policy, Ed25519 signing |
 | `docs/protocol.md` | Field-by-field schemas for `EpochEvidenceBundle`, `AEPRecord`, `CollectiveEvent`, and `TensorEvent` |
 | `docs/integration.md` | Wiring `EvidenceProfilerHook` into a training loop, collecting Flight Recorder dumps, end-to-end trace example |
@@ -84,14 +109,14 @@ and its test to understand the existing contract before modifying.
 
 ## Roadmap
 
-### Phase 2: Complete CLI and test coverage (issues #10-#12)
+### Phase 2: Complete CLI and test coverage
 - [x] #1 test coverage for all modules
 - [x] #2 train-replay record CLI command
 - [x] #3 CONTRIBUTING.md
 - [x] #5 fix causal graph traversal
 - [x] #8 node importance scoring
 - [x] #14 docs: create docs/ directory with architecture, protocol, integration, and CLI reference
-- [ ] #10 feat: replay CLI subcommand
+- [ ] #35 feat: replay CLI subcommand (PRs #37, #41 open)
 - [ ] #11 test: EvidenceProfilerHook + Ed25519 signing tests
 - [ ] #12 test: multi-rank integration test
 
@@ -100,11 +125,18 @@ and its test to understand the existing contract before modifying.
 - [ ] feat: multi-dump ingestion (list of .pkl files, one per rank)
 - [ ] feat: cli ingest-multi for cross-rank dumps with automatic rank detection
 
-### Phase 4: Production readiness
-- [ ] feat: EpochEvidenceBundle serialization to JSON/CBOR for persistence
+### Phase 4: Differentiation — tamper-evident evidence + framework-agnostic coverage
+- [ ] #34 feat: SAFE_MODE circuit-breaker — profiler overhead guard, auto-disable on latency spike (PR #36 open)
+- [ ] feat: framework-agnostic collector interface (Gloo/MTIA backend adapters)
+- [ ] feat: EpochEvidenceBundle serialization to JSON/CBOR for persistence and external audit
 - [ ] feat: replay --output flag writes causal report to file
+- [ ] docs: auditor guide — how to verify an EpochEvidenceBundle signature and chain of custody
+
+### Phase 5: Agent-automated root-cause reasoning
+- [ ] #44 feat: causal ancestor traversal → structured hypothesis output (JSON schema)
+- [ ] feat: agent reasoning layer — LLM-callable tool wrapping find_root_cause()
+- [ ] feat: integration with NCCL Inspector metrics as anomaly trigger signal
 - [ ] perf: streaming parser for large Flight Recorder dumps (>1GB)
-- [ ] feat: anomaly detection — flag tensors with abnormal gradients automatically
 
 ## How patrol sweep discovers new issues
 The patrol sweep reads this CLAUDE.md roadmap section.
