@@ -1,13 +1,20 @@
-"""Build a ProvGraph from CollectiveEvent lists across all ranks."""
+"""Build a ProvGraph from CollectiveEvent or OpSpec lists across all ranks."""
 
 from __future__ import annotations
 
 from ..collector.flight_recorder import CollectiveEvent
+from .ops import OpSpec
 from .prov_graph import ProvActivity, ProvAgent, ProvEntity, ProvGraph
 
 
-def build_from_events(events: list[CollectiveEvent]) -> ProvGraph:
-    """Construct a cross-rank causal graph from Flight Recorder events.
+def build_from_specs(specs: list[OpSpec]) -> ProvGraph:
+    """Construct a cross-rank causal graph from backend-neutral OpSpecs.
+
+    This is the recommended entry point for building a ProvGraph from any
+    communication backend (NCCL, Gloo, MTIA, etc.).  The collector layer
+    translates backend-specific trace events into ``OpSpec`` instances; the
+    graph layer consumes ``OpSpec`` without inspecting backend-specific
+    fields.
 
     Each collective is an Activity; input/output tensors are Entities.
     Ranks are Agents. Edges follow PROV-DM semantics.
@@ -15,34 +22,74 @@ def build_from_events(events: list[CollectiveEvent]) -> ProvGraph:
     graph = ProvGraph()
     agents: dict[tuple[int, str], str] = {}
 
-    for evt in events:
-        agent_key = (evt.rank, evt.process_group)
+    for spec in specs:
+        agent_key = (spec.rank, spec.process_group)
         if agent_key not in agents:
-            agent_id = f"rank:{evt.rank}:pg:{evt.process_group}"
-            graph.add_agent(ProvAgent(id=agent_id, rank=evt.rank, process_group=evt.process_group))
+            agent_id = f"rank:{spec.rank}:pg:{spec.process_group}"
+            graph.add_agent(
+                ProvAgent(id=agent_id, rank=spec.rank, process_group=spec.process_group),
+            )
             agents[agent_key] = agent_id
 
-        act_id = f"act:{evt.rank}:{evt.collective_type}:{evt.sequence_id}"
+        act_id = f"act:{spec.rank}:{spec.collective_type}:{spec.sequence_id}"
         graph.add_activity(ProvActivity(
             id=act_id,
-            label=evt.collective_type,
-            rank=evt.rank,
-            process_group=evt.process_group,
-            timestamp_ns=evt.start_time_ns,
-            collective_type=evt.collective_type,
+            label=spec.collective_type,
+            rank=spec.rank,
+            process_group=spec.process_group,
+            timestamp_ns=spec.start_time_ns,
+            collective_type=spec.collective_type,
         ))
         graph.was_associated_with(act_id, agents[agent_key])
 
         # Input entity (tensor before collective)
-        in_ent_id = f"tensor:{evt.rank}:{evt.sequence_id}:in"
-        graph.add_entity(ProvEntity(id=in_ent_id, digest=None, rank=evt.rank, step=evt.sequence_id))
+        in_ent_id = f"tensor:{spec.rank}:{spec.sequence_id}:in"
+        graph.add_entity(
+            ProvEntity(id=in_ent_id, digest=None, rank=spec.rank, step=spec.sequence_id),
+        )
         graph.used(act_id, in_ent_id)
 
         # Output entity (tensor after collective)
-        out_ent_id = f"tensor:{evt.rank}:{evt.sequence_id}:out"
+        out_ent_id = f"tensor:{spec.rank}:{spec.sequence_id}:out"
         graph.add_entity(
-            ProvEntity(id=out_ent_id, digest=None, rank=evt.rank, step=evt.sequence_id),
+            ProvEntity(id=out_ent_id, digest=None, rank=spec.rank, step=spec.sequence_id),
         )
         graph.was_generated_by(out_ent_id, act_id)
 
     return graph
+
+
+def build_from_events(events: list[CollectiveEvent]) -> ProvGraph:
+    """Construct a cross-rank causal graph from NCCL Flight Recorder events.
+
+    Convenience wrapper that converts ``CollectiveEvent`` records to
+    backend-neutral ``OpSpec`` instances and delegates to ``build_from_specs``.
+
+    Prefer ``build_from_specs`` for non-NCCL backends.
+    """
+    from .ops import Backend, CollectiveOp
+
+    specs: list[OpSpec] = []
+    for evt in events:
+        # Map collective_type string to CollectiveOp enum; fall back to
+        # ALL_REDUCE and preserve the raw string for round-trip fidelity.
+        try:
+            op = CollectiveOp(evt.collective_type)
+        except ValueError:
+            op = CollectiveOp.ALL_REDUCE
+
+        specs.append(OpSpec(
+            op=op,
+            backend=Backend.NCCL,
+            rank=evt.rank,
+            process_group=evt.process_group,
+            sequence_id=evt.sequence_id,
+            src_rank=evt.src_rank,
+            dst_rank=evt.dst_rank,
+            tensor_size=evt.tensor_size,
+            start_time_ns=evt.start_time_ns,
+            end_time_ns=evt.end_time_ns,
+            collective_type_raw=evt.collective_type,
+        ))
+
+    return build_from_specs(specs)
