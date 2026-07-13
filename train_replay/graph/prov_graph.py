@@ -2,29 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
 
 import networkx as nx
-
-
-def _coerce_keys(obj: Any) -> Any:
-    """Recursively coerce all dict keys to strings for stable JSON serialization.
-
-    ``json.dumps`` accepts ``str`` keys natively but produces non-deterministic
-    output for ``int`` / ``tuple`` / other hashable keys (or may raise
-    ``TypeError`` depending on the implementation).  This helper normalises
-    every mapping key to ``str`` so that ``sort_keys=True`` yields a stable
-    canonical representation.
-    """
-    if isinstance(obj, dict):
-        return {str(k): _coerce_keys(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_coerce_keys(v) for v in obj]
-    return obj
 
 
 @dataclass
@@ -119,21 +101,3 @@ class ProvGraph:
 
     def to_dict(self) -> dict[str, Any]:
         return nx.node_link_data(self._g)  # type: ignore[no-any-return]
-
-    def digest(self) -> str:
-        """Return a SHA-256 hex digest of the graph's canonical structure.
-
-        The digest covers all nodes, edges, and their attributes.  It is
-        stable across runs as long as the graph topology and attribute
-        values are identical.
-
-        Uses the networkx node-link format (sorted by node/edge keys) to
-        produce a deterministic JSON representation, then SHA-256 hashes it.
-        """
-        data = nx.node_link_data(self._g)
-        # _coerce_keys normalises non-string dict keys and recursively
-        # walks nested structures.  We intentionally do NOT use default=str
-        # because it masks TypeErrors and can produce unstable output for
-        # complex types (sets, custom objects).
-        canonical = json.dumps(_coerce_keys(data), sort_keys=True)
-        return hashlib.sha256(canonical.encode()).hexdigest()
