@@ -1,7 +1,15 @@
-"""PROV-DM causal graph for cross-rank distributed training provenance."""
+"""PROV-DM causal graph for cross-rank distributed training provenance.
+
+The graph supports integrity verification via a canonical SHA-256 digest
+(:py:meth:`ProvGraph.digest`).  This digest covers all nodes, edges, and
+their attributes and is used by :mod:`train_replay.graph.evidence_chain` to
+bind the graph state to tamper-proof evidence bundles.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -11,7 +19,7 @@ import networkx as nx
 
 @dataclass
 class ProvActivity:
-    """One NCCL collective or kernel execution."""
+    """One collective operation or kernel execution (backend-agnostic)."""
     id: str
     label: str
     rank: int
@@ -101,3 +109,13 @@ class ProvGraph:
 
     def to_dict(self) -> dict[str, Any]:
         return nx.node_link_data(self._g)  # type: ignore[no-any-return]
+
+    def digest(self) -> str:
+        """Return a canonical SHA-256 hex digest of the graph structure.
+
+        Covers nodes, edges, and all attributes.  Any addition, removal,
+        or mutation invalidates the digest.  Used by the evidence chain
+        to detect post-hoc tampering.
+        """
+        canonical = json.dumps(self.to_dict(), sort_keys=True, default=str)
+        return hashlib.sha256(canonical.encode()).hexdigest()
