@@ -85,3 +85,67 @@ def record(dump_path: str, run_id: str, epoch: int) -> None:
     bundle = recorder.bundle()
     console.print(f"Recorded [cyan]{len(bundle.actions)}[/cyan] actions")
     console.print(f"Bundle digest: [bold]{bundle.digest()}[/bold]")
+
+
+@cli.command()
+@click.argument("bundle_path", type=click.Path(exists=True))
+@click.option("--entity-id", required=True, help="Anomalous tensor entity ID to analyze")
+@click.option("--dump-path", type=click.Path(exists=True), required=True,
+              help="Flight Recorder dump for causal graph construction")
+@click.option("--llm-endpoint", default="http://localhost:8000/v1/chat/completions",
+              show_default=True, help="OpenAI-compatible LLM endpoint")
+@click.option("--model", default="gpt-4o-mini", show_default=True, help="LLM model name")
+@click.option("--api-key", default="", help="API key for the LLM endpoint")
+@click.option("--rank", type=int, default=None, help="Filter suspicious actions to a specific rank")
+def analyze(
+    bundle_path: str,
+    entity_id: str,
+    dump_path: str,
+    llm_endpoint: str,
+    model: str,
+    api_key: str,
+    rank: int | None,
+) -> None:
+    """Analyze an evidence bundle with LLM-assisted root-cause hypothesis generation."""
+
+    import json
+
+    from train_replay.agent_reasoner import analyze_bundle
+    from train_replay.collector.flight_recorder import load_flight_recorder
+    from train_replay.graph.builder import build_from_events
+    from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
+
+    console.print(f"[bold]Loading[/bold] evidence bundle from {bundle_path}")
+    with open(bundle_path) as f:
+        bundle_data = json.load(f)
+    # Convert nested dicts to proper AEPRecord instances
+    actions = [AEPRecord(**a) for a in bundle_data.pop("actions", [])]
+    bundle = EpochEvidenceBundle(actions=actions, **bundle_data)
+
+    console.print(f"[bold]Building[/bold] causal graph from {dump_path}")
+    events = load_flight_recorder(Path(dump_path))
+    graph = build_from_events(events)
+
+    console.print(f"[bold]Analyzing[/bold] entity {entity_id} …")
+    report = analyze_bundle(
+        bundle,
+        graph,
+        entity_id,
+        rank=rank,
+        llm_endpoint=llm_endpoint,
+        model=model,
+        api_key=api_key,
+    )
+
+    console.print("\n[bold]Root-Cause Report[/bold]")
+    console.print(f"  Anomaly type:  [cyan]{report.anomaly_type}[/cyan]")
+    console.print(f"  Summary:       {report.summary}")
+
+    if report.hypotheses:
+        for i, hyp in enumerate(report.hypotheses, 1):
+            console.print(f"\n  Hypothesis {i} (confidence {hyp.confidence:.0%}):")
+            console.print(f"    {hyp.description}")
+            if hyp.affected_ranks:
+                console.print(f"    Affected ranks: {hyp.affected_ranks}")
+            if hyp.evidence_activity_ids:
+                console.print(f"    Evidence: {hyp.evidence_activity_ids}")
