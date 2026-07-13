@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -229,7 +230,7 @@ def test_call_llm_sends_api_key(mock_urlopen: MagicMock):
     }).encode()
     mock_urlopen.return_value.__enter__.return_value = mock_resp
 
-    call_llm("prompt", api_key="sk-test-123")
+    call_llm("prompt", llm_endpoint="http://example.com/v1/chat/completions", api_key="sk-test-123")
     req = mock_urlopen.call_args[0][0]
     assert req.headers["Authorization"] == "Bearer sk-test-123"
 
@@ -241,7 +242,7 @@ def test_call_llm_no_choices_raises(mock_urlopen: MagicMock):
     mock_urlopen.return_value.__enter__.return_value = mock_resp
 
     with pytest.raises(ValueError, match="no choices"):
-        call_llm("prompt")
+        call_llm("prompt", llm_endpoint="http://example.com/v1/chat/completions")
 
 
 # ── analyze_bundle end-to-end (mocked LLM) ──────────────────────────
@@ -272,6 +273,7 @@ def test_analyze_bundle_passes_rank_filter(mock_call_llm: MagicMock):
 
     analyze_bundle(
         bundle, graph, "tensor:0:1:out",
+        llm_endpoint="http://example.com/v1/chat/completions",
         rank=1,
     )
     prompt_arg = mock_call_llm.call_args[0][0]
@@ -318,7 +320,7 @@ def test_call_llm_rejects_bad_scheme():
 
 def test_call_llm_rejects_empty_model():
     with pytest.raises(ValueError, match="non-empty string"):
-        call_llm("prompt", model="")
+        call_llm("prompt", llm_endpoint="http://example.com/v1/chat/completions", model="")
 
 
 @patch("train_replay.agent_reasoner.urlopen")
@@ -333,3 +335,110 @@ def test_call_llm_passes_timeout(mock_urlopen: MagicMock):
     call_args = mock_urlopen.call_args
     # urlopen(req, timeout=...) passes timeout as a keyword argument
     assert call_args[1]["timeout"] == 120
+
+
+# ── Security hardening (PR review findings) ────────────────────────
+
+
+def test_call_llm_requires_explicit_endpoint() -> None:
+    """Finding 3: no insecure localhost default — endpoint must be supplied."""
+    with pytest.raises(TypeError, match="llm_endpoint"):
+        call_llm("prompt")  # type: ignore[call-arg]
+
+
+def test_analyze_bundle_requires_explicit_endpoint() -> None:
+    """Finding 3: analyze_bundle has no localhost default either."""
+    graph = _make_graph()
+    bundle = _make_bundle()
+    with pytest.raises(TypeError, match="llm_endpoint"):
+        analyze_bundle(bundle, graph, "tensor:0:1:out")  # type: ignore[call-arg]
+
+
+def _invoke_cli(args: list[str]) -> object:
+    """Invoke the CLI group in a runner, returning the click Result."""
+    from click.testing import CliRunner
+
+    from train_replay.cli.main import cli
+
+    runner = CliRunner()
+    return runner.invoke(cli, args)
+
+
+def test_cli_analyze_requires_llm_endpoint(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Finding 3: --llm-endpoint is a required CLI option (no localhost default)."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    bundle = tmp_path / "bundle.json"
+    bundle.write_text("{}")
+    dump = tmp_path / "dump.pkl"
+    dump.write_text("")
+
+    result = _invoke_cli([
+        "analyze", str(bundle),
+        "--entity-id", "tensor:0:1:out",
+        "--dump-path", str(dump),
+    ])
+    assert getattr(result, "exit_code") != 0
+    assert "--llm-endpoint" in getattr(result, "output")
+
+
+def test_cli_analyze_rejects_api_key_flag(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Finding 1: the --api-key flag has been removed (shell-history leak vector)."""
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    bundle = tmp_path / "bundle.json"
+    bundle.write_text("{}")
+    dump = tmp_path / "dump.pkl"
+    dump.write_text("")
+
+    result = _invoke_cli([
+        "analyze", str(bundle),
+        "--entity-id", "tensor:0:1:out",
+        "--dump-path", str(dump),
+        "--llm-endpoint", "https://api.openai.com/v1/chat/completions",
+        "--api-key", "should-not-be-accepted",
+    ])
+    assert getattr(result, "exit_code") != 0
+    assert "no such option" in getattr(result, "output").lower()
+
+
+def test_cli_analyze_requires_llm_api_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Finding 2: missing LLM_API_KEY fails fast before any network request."""
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    bundle = tmp_path / "bundle.json"
+    bundle.write_text("{}")
+    dump = tmp_path / "dump.pkl"
+    dump.write_text("")
+
+    result = _invoke_cli([
+        "analyze", str(bundle),
+        "--entity-id", "tensor:0:1:out",
+        "--dump-path", str(dump),
+        "--llm-endpoint", "https://api.openai.com/v1/chat/completions",
+    ])
+    assert getattr(result, "exit_code") != 0
+    assert "LLM_API_KEY" in getattr(result, "output")
+
+
+def test_cli_analyze_rejects_whitespace_only_api_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Finding 2: a whitespace-only LLM_API_KEY is treated as missing/empty."""
+    monkeypatch.setenv("LLM_API_KEY", "   ")
+    bundle = tmp_path / "bundle.json"
+    bundle.write_text("{}")
+    dump = tmp_path / "dump.pkl"
+    dump.write_text("")
+
+    result = _invoke_cli([
+        "analyze", str(bundle),
+        "--entity-id", "tensor:0:1:out",
+        "--dump-path", str(dump),
+        "--llm-endpoint", "https://api.openai.com/v1/chat/completions",
+    ])
+    assert getattr(result, "exit_code") != 0
+    assert "LLM_API_KEY" in getattr(result, "output")

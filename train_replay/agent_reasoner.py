@@ -218,7 +218,7 @@ def _validate_llm_endpoint(url: str) -> None:
 
 def call_llm(
     prompt: str,
-    llm_endpoint: str = "http://localhost:8000/v1/chat/completions",
+    llm_endpoint: str,
     model: str = "gpt-4o-mini",
     api_key: str = "",
 ) -> str:
@@ -226,7 +226,9 @@ def call_llm(
 
     Args:
         prompt: The formatted prompt string.
-        llm_endpoint: Full URL of the OpenAI-compatible endpoint.
+        llm_endpoint: Full URL of the OpenAI-compatible endpoint. Required:
+            no default is provided so callers must opt into an endpoint
+            explicitly (avoids silently hitting an unencrypted localhost URL).
         model: Model identifier to use.
         api_key: Bearer token for authentication (empty = no auth header).
 
@@ -300,10 +302,10 @@ def analyze_bundle(
     bundle: EpochEvidenceBundle,
     graph: ProvGraph,
     entity_id: str,
-    rank: int | None = None,
-    llm_endpoint: str = "http://localhost:8000/v1/chat/completions",
+    llm_endpoint: str,
     model: str = "gpt-4o-mini",
     api_key: str = "",
+    rank: int | None = None,
 ) -> RootCauseReport:
     """Run the full root-cause analysis pipeline.
 
@@ -316,10 +318,11 @@ def analyze_bundle(
         bundle: Signed evidence bundle for the epoch.
         graph: Causal PROV-DM graph.
         entity_id: The anomalous tensor entity ID to trace.
-        rank: Optional rank filter for suspicious actions.
-        llm_endpoint: OpenAI-compatible LLM endpoint URL.
+        llm_endpoint: OpenAI-compatible LLM endpoint URL. Required: callers
+            must supply an endpoint explicitly (no insecure localhost default).
         model: LLM model name.
         api_key: API key for the LLM endpoint.
+        rank: Optional rank filter for suspicious actions.
 
     Returns:
         A RootCauseReport with hypotheses and raw LLM response.

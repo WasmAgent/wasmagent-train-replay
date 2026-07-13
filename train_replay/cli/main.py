@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import warnings
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 from pathlib import Path
@@ -94,13 +93,9 @@ def record(dump_path: str, run_id: str, epoch: int) -> None:
 @click.option("--entity-id", required=True, help="Anomalous tensor entity ID to analyze")
 @click.option("--dump-path", type=click.Path(exists=True), required=True,
               help="Flight Recorder dump for causal graph construction")
-@click.option("--llm-endpoint", default="http://localhost:8000/v1/chat/completions",
-              show_default=True, help="OpenAI-compatible LLM endpoint")
+@click.option("--llm-endpoint", required=True,
+              help="OpenAI-compatible LLM endpoint URL (e.g. https://api.openai.com/v1/chat/completions)")
 @click.option("--model", default="gpt-4o-mini", show_default=True, help="LLM model name")
-@click.option(
-    "--api-key", default="",
-    help="[DEPRECATED] use LLM_API_KEY env var (avoids shell history leaks)",
-)
 @click.option("--rank", type=int, default=None, help="Filter suspicious actions to a specific rank")
 def analyze(
     bundle_path: str,
@@ -108,7 +103,6 @@ def analyze(
     dump_path: str,
     llm_endpoint: str,
     model: str,
-    api_key: str,
     rank: int | None,
 ) -> None:
     """Analyze an evidence bundle with LLM-assisted root-cause hypothesis generation."""
@@ -120,22 +114,17 @@ def analyze(
     from train_replay.graph.builder import build_from_events
     from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
 
-    # Resolve API key: env var takes precedence; --api-key flag is deprecated.
-    effective_key = os.environ.get("LLM_API_KEY", "")
-    if api_key:
-        if effective_key:
-            console.print(
-                "[yellow]Warning:[/yellow] --api-key ignored; "
-                "LLM_API_KEY env var takes precedence."
-            )
-        else:
-            effective_key = api_key
-            warnings.warn(
-                "Passing --api-key via CLI flag is deprecated and may leak to shell history. "
-                "Set the LLM_API_KEY environment variable instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+    # Resolve the API key from the environment ONLY. We intentionally do NOT
+    # accept the key via a CLI flag: flags are persisted in shell history
+    # (.bash_history, .zsh_history) and leak the secret. Fail fast with a clear
+    # message when the key is missing or empty so we never emit an
+    # unauthenticated request that surfaces an opaque upstream error.
+    effective_key = os.environ.get("LLM_API_KEY", "").strip()
+    if not effective_key:
+        raise click.UsageError(
+            "LLM_API_KEY environment variable is not set or is empty. "
+            "Set it before running 'analyze' (e.g. export LLM_API_KEY=...)."
+        )
 
     console.print(f"[bold]Loading[/bold] evidence bundle from {bundle_path}")
     with open(bundle_path) as f:
