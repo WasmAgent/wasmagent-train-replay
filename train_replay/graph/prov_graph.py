@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -101,3 +103,18 @@ class ProvGraph:
 
     def to_dict(self) -> dict[str, Any]:
         return nx.node_link_data(self._g)
+
+    def digest(self) -> str:
+        """Return a SHA-256 hex digest of the graph's canonical structure.
+
+        The digest covers all nodes, edges, and their attributes.  It is
+        stable across runs as long as the graph topology and attribute
+        values are identical.
+
+        Uses the networkx node-link format (sorted by node/edge keys) to
+        produce a deterministic JSON representation, then SHA-256 hashes it.
+        """
+        data = nx.node_link_data(self._g)
+        # Ensure deterministic ordering by sorting all lists and dicts
+        canonical = json.dumps(data, sort_keys=True, default=str)
+        return hashlib.sha256(canonical.encode()).hexdigest()
