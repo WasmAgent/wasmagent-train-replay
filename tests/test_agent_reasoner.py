@@ -10,6 +10,7 @@ import pytest
 from train_replay.agent_reasoner import (
     CausalContext,
     RootCauseReport,
+    _validate_llm_endpoint,
     analyze_bundle,
     assemble_causal_context,
     call_llm,
@@ -277,3 +278,58 @@ def test_analyze_bundle_passes_rank_filter(mock_call_llm: MagicMock):
     # The prompt should mention suspicious actions from rank 1
     # (there are no FULL-mode actions on rank 1, so prompt shows "(none)")
     assert "Causal Analysis Request" in prompt_arg
+
+
+# ── _validate_llm_endpoint tests ──────────────────────────────────
+
+
+def test_validate_endpoint_accepts_http():
+    _validate_llm_endpoint("http://localhost:8000/v1/chat/completions")
+
+
+def test_validate_endpoint_accepts_https():
+    _validate_llm_endpoint("https://api.openai.com/v1/chat/completions")
+
+
+@pytest.mark.parametrize("bad_url", [
+    "ftp://localhost:8000/v1/chat/completions",
+    "file:///etc/passwd",
+    "data:text/plain,hello",
+    "javascript:alert(1)",
+    "",
+])
+def test_validate_endpoint_rejects_bad_schemes(bad_url: str):
+    with pytest.raises(ValueError, match="http or https scheme"):
+        _validate_llm_endpoint(bad_url)
+
+
+def test_validate_endpoint_rejects_no_hostname():
+    with pytest.raises(ValueError, match="hostname"):
+        _validate_llm_endpoint("http:///v1/chat/completions")
+
+
+# ── call_llm validation tests ─────────────────────────────────────
+
+
+def test_call_llm_rejects_bad_scheme():
+    with pytest.raises(ValueError, match="http or https scheme"):
+        call_llm("prompt", llm_endpoint="ftp://localhost/call")
+
+
+def test_call_llm_rejects_empty_model():
+    with pytest.raises(ValueError, match="non-empty string"):
+        call_llm("prompt", model="")
+
+
+@patch("train_replay.agent_reasoner.urlopen")
+def test_call_llm_passes_timeout(mock_urlopen: MagicMock):
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps({
+        "choices": [{"message": {"content": "ok"}}],
+    }).encode()
+    mock_urlopen.return_value.__enter__.return_value = mock_resp
+
+    call_llm("prompt", llm_endpoint="http://example.com/v1/chat/completions")
+    call_args = mock_urlopen.call_args
+    # urlopen(req, timeout=...) passes timeout as a keyword argument
+    assert call_args[1]["timeout"] == 120

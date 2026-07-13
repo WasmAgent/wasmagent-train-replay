@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, Field
@@ -192,6 +193,28 @@ Do NOT include markdown fences, explanations, or extra text outside the JSON.
 
 # ── LLM caller ──────────────────────────────────────────────────────
 
+_LLM_TIMEOUT_SECONDS = 120
+_ALLOWED_SCHEMES = {"http", "https"}
+
+
+def _validate_llm_endpoint(url: str) -> None:
+    """Validate that a URL has an allowed scheme and a plausible path.
+
+    Args:
+        url: The LLM endpoint URL to validate.
+
+    Raises:
+        ValueError: If the scheme is not http/https or the URL is malformed.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in _ALLOWED_SCHEMES:
+        raise ValueError(
+            f"LLM endpoint must use http or https scheme, got '{parsed.scheme}'. "
+            f"Refusing to connect to '{url}'."
+        )
+    if not parsed.hostname:
+        raise ValueError(f"LLM endpoint URL must include a hostname: '{url}'")
+
 
 def call_llm(
     prompt: str,
@@ -211,8 +234,13 @@ def call_llm(
         The content string from the first choice in the response.
 
     Raises:
-        ValueError: If the response contains no choices.
+        ValueError: If the endpoint URL is invalid or the response has no choices.
     """
+    _validate_llm_endpoint(llm_endpoint)
+
+    if not model or not model.strip():
+        raise ValueError("model identifier must be a non-empty string")
+
     body = json.dumps({
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -224,7 +252,7 @@ def call_llm(
         headers["Authorization"] = f"Bearer {api_key}"
 
     req = Request(llm_endpoint, data=body, headers=headers, method="POST")
-    with urlopen(req) as resp:
+    with urlopen(req, timeout=_LLM_TIMEOUT_SECONDS) as resp:
         raw = json.loads(resp.read().decode("utf-8"))
 
     choices = raw.get("choices", [])

@@ -29,7 +29,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-from .prov_graph import ProvGraph
+from .prov_graph import ProvGraph, _coerce_keys
 
 
 def compute_graph_digest(graph: ProvGraph) -> str:
@@ -65,7 +65,7 @@ def compute_attachment_digest(attachment: EvidenceAttachment) -> str:
         #  attachment[i].digest() must be stable regardless of
         #  attachment[i].previous_attachment_digest.
     }
-    canonical = json.dumps(data, sort_keys=True)
+    canonical = json.dumps(_coerce_keys(data), sort_keys=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 

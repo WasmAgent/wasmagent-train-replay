@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import warnings
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 from pathlib import Path
@@ -95,7 +97,10 @@ def record(dump_path: str, run_id: str, epoch: int) -> None:
 @click.option("--llm-endpoint", default="http://localhost:8000/v1/chat/completions",
               show_default=True, help="OpenAI-compatible LLM endpoint")
 @click.option("--model", default="gpt-4o-mini", show_default=True, help="LLM model name")
-@click.option("--api-key", default="", help="API key for the LLM endpoint")
+@click.option(
+    "--api-key", default="",
+    help="[DEPRECATED] use LLM_API_KEY env var (avoids shell history leaks)",
+)
 @click.option("--rank", type=int, default=None, help="Filter suspicious actions to a specific rank")
 def analyze(
     bundle_path: str,
@@ -114,6 +119,23 @@ def analyze(
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.graph.builder import build_from_events
     from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
+
+    # Resolve API key: env var takes precedence; --api-key flag is deprecated.
+    effective_key = os.environ.get("LLM_API_KEY", "")
+    if api_key:
+        if effective_key:
+            console.print(
+                "[yellow]Warning:[/yellow] --api-key ignored; "
+                "LLM_API_KEY env var takes precedence."
+            )
+        else:
+            effective_key = api_key
+            warnings.warn(
+                "Passing --api-key via CLI flag is deprecated and may leak to shell history. "
+                "Set the LLM_API_KEY environment variable instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
 
     console.print(f"[bold]Loading[/bold] evidence bundle from {bundle_path}")
     with open(bundle_path) as f:
@@ -134,7 +156,7 @@ def analyze(
         rank=rank,
         llm_endpoint=llm_endpoint,
         model=model,
-        api_key=api_key,
+        api_key=effective_key,
     )
 
     console.print("\n[bold]Root-Cause Report[/bold]")

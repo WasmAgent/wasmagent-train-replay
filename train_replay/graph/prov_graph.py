@@ -11,6 +11,22 @@ from typing import Any
 import networkx as nx
 
 
+def _coerce_keys(obj: Any) -> Any:
+    """Recursively coerce all dict keys to strings for stable JSON serialization.
+
+    ``json.dumps`` accepts ``str`` keys natively but produces non-deterministic
+    output for ``int`` / ``tuple`` / other hashable keys (or may raise
+    ``TypeError`` depending on the implementation).  This helper normalises
+    every mapping key to ``str`` so that ``sort_keys=True`` yields a stable
+    canonical representation.
+    """
+    if isinstance(obj, dict):
+        return {str(k): _coerce_keys(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_coerce_keys(v) for v in obj]
+    return obj
+
+
 @dataclass
 class ProvActivity:
     """One NCCL collective or kernel execution."""
@@ -115,6 +131,9 @@ class ProvGraph:
         produce a deterministic JSON representation, then SHA-256 hashes it.
         """
         data = nx.node_link_data(self._g)
-        # Ensure deterministic ordering by sorting all lists and dicts
-        canonical = json.dumps(data, sort_keys=True, default=str)
+        # _coerce_keys normalises non-string dict keys and recursively
+        # walks nested structures.  We intentionally do NOT use default=str
+        # because it masks TypeErrors and can produce unstable output for
+        # complex types (sets, custom objects).
+        canonical = json.dumps(_coerce_keys(data), sort_keys=True)
         return hashlib.sha256(canonical.encode()).hexdigest()
