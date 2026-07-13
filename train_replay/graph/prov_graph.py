@@ -99,10 +99,10 @@ class ProvGraph:
         return new
 
     def nodes(self) -> Iterator[tuple[str, dict[str, Any]]]:
-        return self._g.nodes(data=True)
+        return self._g.nodes(data=True)  # type: ignore[no-any-return]
 
     def to_dict(self) -> dict[str, Any]:
-        return nx.node_link_data(self._g)
+        return nx.node_link_data(self._g)  # type: ignore[no-any-return]
 
     def digest(self) -> str:
         """Return a SHA-256 hex digest of the graph's canonical structure.

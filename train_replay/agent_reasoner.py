@@ -16,13 +16,10 @@ from pydantic import BaseModel, Field
 
 from train_replay.graph.prov_graph import ProvGraph
 from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
-from train_replay.recording.modes import RecordingMode
 from train_replay.replay.replayer import EpochReplayer
 
 
 # ── Data models ─────────────────────────────────────────────────────
-
-
 @dataclass
 class CausalContext:
     """Aggregated causal context for one anomalous tensor entity.
@@ -46,20 +43,26 @@ class CausalContext:
     suspicious_actions: list[AEPRecord] = field(default_factory=list)
 
 
-class RootCauseHypothesis(BaseModel):
+class RootCauseHypothesis(BaseModel):  # type: ignore[misc]
     """One hypothesized root cause with confidence and supporting evidence."""
 
-    description: str = Field(..., description="Natural-language description of the hypothesized root cause.")
+    description: str = Field(
+        ..., description="Natural-language description of the hypothesized root cause."
+    )
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score between 0 and 1.")
     affected_ranks: list[int] | None = Field(None, description="Ranks affected by this root cause.")
-    evidence_activity_ids: list[str] | None = Field(None, description="Activity IDs that support this hypothesis.")
+    evidence_activity_ids: list[str] | None = Field(
+        None, description="Activity IDs that support this hypothesis."
+    )
 
 
-class RootCauseReport(BaseModel):
+class RootCauseReport(BaseModel):  # type: ignore[misc]
     """Structured report of root-cause analysis."""
 
     summary: str = Field(..., description="High-level summary of the analysis.")
-    anomaly_type: str = Field(..., description="Type of anomaly detected (e.g. deadlock, timeout, desync).")
+    anomaly_type: str = Field(
+        ..., description="Type of anomaly detected (e.g. deadlock, timeout, desync)."
+    )
     hypotheses: list[RootCauseHypothesis] = Field(
         ..., description="Ordered list of root-cause hypotheses, highest confidence first."
     )
@@ -89,7 +92,10 @@ def _summarise_graph(graph: ProvGraph) -> str:
             d = data.get("data")
             if d is not None:
                 ranks.add(d.rank)
-    return f"{activities} activities, {entities} entities, {agents} agents across {len(ranks)} rank(s)"
+    return (
+        f"{activities} activities, {entities} entities, "
+        f"{agents} agents across {len(ranks)} rank(s)"
+    )
 
 
 def assemble_causal_context(
@@ -225,7 +231,7 @@ def call_llm(
     if not choices:
         raise ValueError("LLM response contains no choices")
 
-    return choices[0]["message"]["content"]
+    return str(choices[0]["message"]["content"])
 
 
 # ── Response parsing ────────────────────────────────────────────────
