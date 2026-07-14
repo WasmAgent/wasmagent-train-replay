@@ -86,3 +86,21 @@ def test_non_dict_payload_is_rejected(tmp_path: Path) -> None:
         pickle.dump([1, 2, 3], f)
     with pytest.raises(UnsafeFlightRecorderDumpError):
         load_flight_recorder(trace)
+
+
+def test_dict_without_entries_key_is_rejected(tmp_path: Path) -> None:
+    """A pickle that deserializes to a dict without 'entries' is rejected."""
+    trace = tmp_path / "trace.pkl"
+    with open(trace, "wb") as f:
+        pickle.dump({"other_key": [1, 2, 3]}, f)
+    with pytest.raises(UnsafeFlightRecorderDumpError):
+        load_flight_recorder(trace)
+
+
+def test_dict_with_non_list_entries_is_rejected(tmp_path: Path) -> None:
+    """A pickle that deserializes to a dict with 'entries' as a non-list is rejected."""
+    trace = tmp_path / "trace.pkl"
+    with open(trace, "wb") as f:
+        pickle.dump({"entries": "not-a-list"}, f)
+    with pytest.raises(UnsafeFlightRecorderDumpError):
+        load_flight_recorder(trace)

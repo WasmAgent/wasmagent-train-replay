@@ -73,7 +73,12 @@ def load_flight_recorder(path: Path) -> list[CollectiveEvent]:
     with open(path, "rb") as f:
         raw: Any = _RestrictedUnpickler(f).load()
 
-    if not isinstance(raw, dict) or not isinstance(raw.get("entries"), list):
+    if not isinstance(raw, dict):
+        raise UnsafeFlightRecorderDumpError(
+            "Flight recorder dump must deserialize to a dict with an "
+            "'entries' list of built-in containers and scalars."
+        )
+    if "entries" not in raw or not isinstance(raw["entries"], list):
         raise UnsafeFlightRecorderDumpError(
             "Flight recorder dump must deserialize to a dict with an "
             "'entries' list of built-in containers and scalars."
