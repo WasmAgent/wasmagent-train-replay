@@ -36,7 +36,7 @@ def compute_graph_digest(graph: ProvGraph) -> str:
     values are identical.
     """
     representation = graph.to_dict()
-    canonical = json.dumps(representation, sort_keys=True, default=str)
+    canonical = json.dumps(representation, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 

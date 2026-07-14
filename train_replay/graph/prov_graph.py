@@ -117,5 +117,5 @@ class ProvGraph:
         or mutation invalidates the digest.  Used by the evidence chain
         to detect post-hoc tampering.
         """
-        canonical = json.dumps(self.to_dict(), sort_keys=True, default=str)
+        canonical = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"), default=str)
         return hashlib.sha256(canonical.encode()).hexdigest()
