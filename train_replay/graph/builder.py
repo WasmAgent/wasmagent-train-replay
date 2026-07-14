@@ -72,11 +72,14 @@ def build_from_events(events: list[CollectiveEvent]) -> ProvGraph:
     specs: list[OpSpec] = []
     for evt in events:
         # Map collective_type string to CollectiveOp enum; fall back to
-        # ALL_REDUCE and preserve the raw string for round-trip fidelity.
+        # UNKNOWN and preserve the raw string for round-trip fidelity.
+        # This ensures the OpSpec.op field never silently misattributes an
+        # unknown backend operation to a known one (which would violate
+        # the determinism guarantee needed for tamper-evidence).
         try:
             op = CollectiveOp(evt.collective_type)
         except ValueError:
-            op = CollectiveOp.ALL_REDUCE
+            op = CollectiveOp.UNKNOWN
 
         specs.append(OpSpec(
             op=op,

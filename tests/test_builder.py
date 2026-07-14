@@ -179,6 +179,32 @@ class TestBuildFromEvents:
         # Raw string should be preserved even if not in CollectiveOp enum
         assert "act:0:custom_op_xyz:1" in node_ids
 
+    def test_unknown_op_produces_different_graph_than_all_reduce(self) -> None:
+        """An unknown collective type must produce a different graph than ALL_REDUCE.
+
+        If the builder silently remapped unknown ops to ALL_REDUCE (without
+        preserving the raw string), the graphs would be identical — violating
+        the determinism guarantee needed for tamper-evidence.
+        """
+        base = dict(
+            rank=0,
+            process_group="default",
+            src_rank=None,
+            dst_rank=None,
+            tensor_size=1024,
+            enqueue_time_ns=500,
+            start_time_ns=1000,
+            end_time_ns=2000,
+            sequence_id=1,
+        )
+        g_unknown = build_from_events(
+            [CollectiveEvent(**base, collective_type="custom_op_xyz")],
+        )
+        g_known = build_from_events(
+            [CollectiveEvent(**base, collective_type="all_reduce")],
+        )
+        assert g_unknown.digest() != g_known.digest()
+
     def test_build_from_events_uses_build_from_specs(self) -> None:
         """Both entry points produce the same graph for equivalent data."""
         events = [

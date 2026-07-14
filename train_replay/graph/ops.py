@@ -40,6 +40,7 @@ class CollectiveOp(str, Enum):
     REDUCE = "reduce"
     GATHER = "gather"
     SCATTER = "scatter"
+    UNKNOWN = "unknown"
 
 
 @dataclass(frozen=True)

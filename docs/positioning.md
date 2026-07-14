@@ -24,8 +24,12 @@ that the trace was not modified after collection.
 
 - **EpochEvidenceBundle** is canonicalised (fields sorted, signature stripped) and
   Ed25519-signed into a DSSE-style envelope.
-- **SHA-256 digests** are stable across runs as long as actions are unchanged — any
-  post-hoc edit invalidates the signature.
+- **SHA-256 digests** are computed from canonical JSON (`sort_keys=True`) of
+  the full graph structure (nodes, edges, attributes).  Stability depends on
+  deterministic event ordering during collection and preservation of the
+  original backend string via ``collective_type_raw`` — unknown operations
+  are tagged as ``CollectiveOp.UNKNOWN`` rather than silently remapped to a
+  known type.  Any post-hoc edit to the graph invalidates the digest.
 - **Recording policy** (`validation → delta → full`) ensures cost-aware evidence
   capture: cheap by default, escalates on risk signals.
 
