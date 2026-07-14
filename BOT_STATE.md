@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-14 10:35 UTC by patrol_
+_Last updated: 2026-07-14 11:35 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 2 |
-| Active (running/reviewing) | 1 |
+| Pending | 5 |
+| Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 412 |
+| Completed/Merged (all time) | 416 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #61 | Fix WasmAgent/wasmagent-train-replay#59 (feat: EpochEvide... | merged/merged | 2026-07-14 |
+| #58 | feat: CollisionDetector backend implementations — per-b... | merged/merged | 2026-07-14 |
+| #56 | feat: Gloo collector adapter — parse Gloo traces into C... | completed/complexity_gate_split | 2026-07-14 |
+| #59 | feat: EpochEvidenceBundle serialization to JSON/CBOR for ... | completed/complexity_gate_split | 2026-07-14 |
 | #34 | safemode: SAFE_MODE machinery + `admin safe-mode` subcomm... | merged/merged | 2026-07-14 |
-| #43 | strategy: differentiate from fr_trace — focus on tamper... | merged/closed_upstream_after_failure | 2026-07-13 |
-| #46 | docs: clarify complementary relationship with NCCL Inspec... | merged/auto_closed_resolved | 2026-07-13 |
-| #32 | [discussion] explore: Proactive anomaly detection with cr... | completed/panel_promoted | 2026-07-13 |
-| #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-13 |
 
 ## Waiting for Human
 
