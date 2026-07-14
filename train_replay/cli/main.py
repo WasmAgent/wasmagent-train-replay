@@ -10,6 +10,9 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from train_replay.cli.admin import admin
+from train_replay.cli.safemode import SafeMode, SafeModeError
+
 # Resolved explicitly (rather than click's runtime `package_name=`) because the
 # click type stub bundled here does not declare that kwarg; `version=` is
 # stub-safe and still tracks pyproject.toml via installed dist metadata.
@@ -23,8 +26,19 @@ console = Console()
 
 @click.group()
 @click.version_option(version=_VERSION)
-def cli() -> None:
+@click.pass_context
+def cli(ctx: click.Context) -> None:
     """wasmagent-train-replay — causal evidence layer for distributed GPU training."""
+    # Each CLI invocation carries its own SafeMode through the command tree via
+    # the click context. ``ensure_object`` keeps an ``obj`` that a caller (or a
+    # test harness) passed in via ``CliRunner.invoke(..., obj=...)`` so the
+    # instance is shared within a single invocation but never across them.
+    ctx.ensure_object(dict)
+    if "safe_mode" not in ctx.obj:
+        ctx.obj["safe_mode"] = SafeMode()
+
+
+cli.add_command(admin)
 
 
 @cli.command()
@@ -72,8 +86,14 @@ def trace(entity_id: str, dump_path: str) -> None:
 @click.argument("dump_path", type=click.Path(exists=True))
 @click.option("--run-id", default="dev-run", show_default=True)
 @click.option("--epoch", default=0, type=int, show_default=True)
-def record(dump_path: str, run_id: str, epoch: int) -> None:
+@click.pass_context
+def record(ctx: click.Context, dump_path: str, run_id: str, epoch: int) -> None:
     """Record AEP evidence for all collectives in a Flight Recorder dump."""
+    safe_mode: SafeMode = ctx.obj["safe_mode"]
+    try:
+        safe_mode.check("record")
+    except SafeModeError as exc:
+        raise click.ClickException(str(exc))
 
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.recording.recorder import EpochRecorder
@@ -85,3 +105,67 @@ def record(dump_path: str, run_id: str, epoch: int) -> None:
     bundle = recorder.bundle()
     console.print(f"Recorded [cyan]{len(bundle.actions)}[/cyan] actions")
     console.print(f"Bundle digest: [bold]{bundle.digest()}[/bold]")
+
+
+@cli.command()
+@click.pass_context
+def resume(ctx: click.Context) -> None:
+    """Exit safe mode and resume normal operation.
+
+    This is the operator's quick way to clear a safe-mode lock without
+    specifying the full ``admin safe-mode --off`` subcommand.
+    """
+    safe_mode: SafeMode = ctx.obj["safe_mode"]
+    safe_mode.clear()
+    console.print("[green]Safe mode cleared — normal operation resumed.[/green]")
+
+
+@cli.command()
+@click.argument("dump_path", type=click.Path(exists=True))
+@click.argument("entity_id")
+@click.option("--rank", "-r", type=int, default=0, help="Rank to replay")
+@click.option("--run-id", default="dev-run", show_default=True)
+@click.option("--epoch", default=0, type=int, show_default=True)
+@click.pass_context
+def replay(
+    ctx: click.Context,
+    dump_path: str,
+    entity_id: str,
+    rank: int,
+    run_id: str,
+    epoch: int,
+) -> None:
+    """Replay an epoch and trace causal chains for a tensor entity."""
+    safe_mode: SafeMode = ctx.obj["safe_mode"]
+    try:
+        safe_mode.check("replay")
+    except SafeModeError as exc:
+        raise click.ClickException(str(exc))
+
+    from train_replay.collector.flight_recorder import load_flight_recorder
+    from train_replay.graph.builder import build_from_events
+    from train_replay.recording.recorder import EpochRecorder
+    from train_replay.replay.replayer import EpochReplayer
+
+    events = load_flight_recorder(Path(dump_path))
+    graph = build_from_events(events)
+    replayer = EpochReplayer(graph)
+
+    recorder = EpochRecorder(run_id=run_id, epoch=epoch)
+    for evt in events:
+        recorder.record_collective(evt)
+    bundle = recorder.bundle()
+
+    result = replayer.replay_rank(bundle, rank, entity_id)
+
+    console.print(f"[bold]Replay Result[/bold] for epoch {result.epoch}, rank {result.rank}")
+    console.print(f"Causal ancestors of [cyan]{entity_id}[/cyan]:")
+    for anc in result.causal_ancestors:
+        console.print(f"  {anc}")
+    console.print(f"\nSuspicious actions ([cyan]{len(result.suspicious_actions)}[/cyan]):")
+    for a in result.suspicious_actions:
+        info = (
+            f"  rank={a.rank} step={a.step}"
+            f" type={a.collective_type} mode={a.recording_mode}"
+        )
+        console.print(info)
