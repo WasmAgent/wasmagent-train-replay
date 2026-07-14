@@ -213,7 +213,7 @@ class AgentReasoner:
             f"- Total nodes: {summary['total_nodes']}\n"
             f"- Activities: {json.dumps(summary['activities'], indent=2)}\n"
             f"- Causal ancestors (traced):"
-            f" {json.dumps(summary['causal_anctestors'], indent=2)}\n"
+            f" {json.dumps(summary['causal_ancestors'], indent=2)}\n"
             f"- Suspicious actions (FULL recording mode):"
             f" {json.dumps(summary['suspicious_actions'], indent=2)}\n\n"
             "Respond with a JSON object following this schema:\n"

@@ -17,6 +17,7 @@ from train_replay.recording.modes import RecordingMode
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_bundle(
     actions: list[tuple[str, int, int, str, RecordingMode]] | None = None,
 ) -> EpochEvidenceBundle:
@@ -75,6 +76,7 @@ def _make_graph() -> ProvGraph:
 # RootCauseReport model
 # ---------------------------------------------------------------------------
 
+
 class TestRootCauseReport:
     def test_defaults(self) -> None:
         report = RootCauseReport(
@@ -113,6 +115,7 @@ class TestRootCauseReport:
 # ---------------------------------------------------------------------------
 # AgentReasoner — unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestAgentReasoner:
     def test_analyze_with_prebuilt_graph(self) -> None:
@@ -255,9 +258,10 @@ class TestAgentReasoner:
             ],
         }
 
-        with patch(
-            "train_replay.agent_reasoner.urllib.request.urlopen",
-        ) as mock_urlopen:
+        patch_path = (
+            "train_replay.agent_reasoner.urllib.request.urlopen"
+        )
+        with patch(patch_path) as mock_urlopen:
             mock_resp = MagicMock()
             mock_resp.read.return_value = json.dumps(mock_response).encode()
             mock_urlopen.return_value.__enter__.return_value = mock_resp
@@ -283,8 +287,11 @@ class TestAgentReasoner:
         bundle = _make_bundle()
         graph = _make_graph()
 
+        patch_path = (
+            "train_replay.agent_reasoner.urllib.request.urlopen"
+        )
         with patch(
-            "train_replay.agent_reasoner.urllib.request.urlopen",
+            patch_path,
             side_effect=ConnectionError("API unreachable"),
         ):
             reasoner = AgentReasoner(
