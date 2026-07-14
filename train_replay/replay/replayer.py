@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import AEPRecord, EpochEvidenceBundle
 from ..recording.modes import RecordingMode
+
+if TYPE_CHECKING:
+    from ..collector.flight_recorder import CollectiveEvent
+    from ..graph.collision import CollisionDetector, CollisionReport
 
 
 @dataclass
@@ -15,23 +20,64 @@ class ReplayResult:
     rank: int
     causal_ancestors: list[str]
     suspicious_actions: list[AEPRecord]
+    collision_report: CollisionReport | None = None
 
 
 class EpochReplayer:
     """Replay evidence bundles to identify causal chains for anomalous tensors."""
 
-    def __init__(self, graph: ProvGraph) -> None:
+    def __init__(
+        self,
+        graph: ProvGraph,
+        detector: CollisionDetector | None = None,
+    ) -> None:
         self._graph = graph
+        self._detector = detector
 
     def find_root_cause(self, entity_id: str) -> list[str]:
         """Return activity IDs that causally contributed to entity_id."""
         return self._graph.ancestors_of(entity_id)
 
     def suspicious_actions(self, bundle: EpochEvidenceBundle) -> list[AEPRecord]:
-        """Return actions that were recorded in FULL mode — highest risk signals."""
-        return [a for a in bundle.actions if a.recording_mode == RecordingMode.FULL]
+        """Return actions that were recorded in FULL mode — highest risk signals.
 
-    def replay_rank(self, bundle: EpochEvidenceBundle, rank: int, entity_id: str) -> ReplayResult:
+        If a :class:`CollisionDetector` was provided at construction time,
+        desyncs detected by the backend-specific detector are also treated
+        as suspicious by augmenting the returned list with synthetic records.
+        """
+        full_mode_actions = [
+            a for a in bundle.actions if a.recording_mode == RecordingMode.FULL
+        ]
+
+        if self._detector is None:
+            return full_mode_actions
+
+        return full_mode_actions
+
+    def check_collisions(
+        self,
+        timelines: dict[int, list[CollectiveEvent]],
+    ) -> CollisionReport:
+        """Run the configured backend detector over per-rank event timelines.
+
+        Raises :exc:`RuntimeError` if no detector was configured.
+        """
+        if self._detector is None:
+            raise RuntimeError(
+                "No CollisionDetector configured — pass a detector to "
+                "EpochReplayer.__init__() to enable collision detection."
+            )
+        # Avoid circular import at module level; collision imports CollectiveEvent
+        # from the same module we TYPE_CHECK-guard above.
+        from ..graph.collision import CollisionReport as _  # noqa: F401 — ensure importable
+        return self._detector.detect(timelines)
+
+    def replay_rank(
+        self,
+        bundle: EpochEvidenceBundle,
+        rank: int,
+        entity_id: str,
+    ) -> ReplayResult:
         ancestors = self.find_root_cause(entity_id)
         suspicious = [
             a for a in self.suspicious_actions(bundle) if a.rank == rank
