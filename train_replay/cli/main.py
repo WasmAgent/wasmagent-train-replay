@@ -175,3 +175,83 @@ def replay(
         console.print(
             "[yellow]Provide --entity-id and/or --bundle-path to analyze.[/yellow]"
         )
+
+
+@cli.command()
+@click.argument("bundle_path", type=click.Path(exists=True))
+@click.option("--entity-id", "-e", default=None, help="Specific entity ID to trace")
+@click.option(
+    "--llm-endpoint",
+    default="",
+    envvar="LLM_ENDPOINT",
+    help="OpenAI-compatible API base URL (default: empty, no LLM call).  "
+    "Alternatively, set LLM_ENDPOINT env var.",
+)
+def analyze(
+    bundle_path: str,
+    entity_id: str | None,
+    llm_endpoint: str,
+) -> None:
+    """Analyze an evidence bundle and generate a root-cause hypothesis.
+
+    Uses causal ancestor traversal (PROV-DM graph) and optionally an LLM
+    to produce a structured root-cause report.
+
+    The LLM API key is read from the LLM_API_KEY environment variable.
+    """
+
+    import json
+
+    from train_replay.agent_reasoner import AgentReasoner
+    from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
+    from train_replay.recording.modes import RecordingMode
+
+    # Load the evidence bundle
+    with open(bundle_path) as f:
+        raw = json.load(f)
+
+    bundle = EpochEvidenceBundle(
+        run_id=raw.get("run_id", ""),
+        epoch=raw.get("epoch", 0),
+        actions=[
+            AEPRecord(
+                action_id=act.get("action_id", ""),
+                rank=act.get("rank", 0),
+                step=act.get("step", 0),
+                collective_type=act.get("collective_type", ""),
+                recording_mode=RecordingMode(
+                    act.get("recording_mode", "validation"),
+                ),
+                timestamp_ns=act.get("timestamp_ns", 0),
+            )
+            for act in raw.get("actions", [])
+        ],
+    )
+
+    # Build reasoner and analyze
+    reasoner = AgentReasoner(llm_endpoint=llm_endpoint)
+    report = reasoner.analyze(bundle=bundle, entity_id=entity_id)
+
+    # Display results
+    console.print("\n[bold]Root-Cause Analysis Report[/bold]")
+    console.print("=" * 50)
+
+    if report.root_cause_activity_ids:
+        console.print(
+            f"\n[bold red]Root cause activities:[/bold red]"
+        )
+        for aid in report.root_cause_activity_ids:
+            console.print(f"  • {aid}")
+
+    console.print(f"\n[bold]Description:[/bold] {report.root_cause_description}")
+    console.print(f"[bold]Confidence:[/bold] {report.confidence}")
+
+    if report.supporting_evidence:
+        console.print("\n[bold]Supporting evidence:[/bold]")
+        for ev in report.supporting_evidence:
+            console.print(f"  • {ev}")
+
+    if report.recommended_action:
+        console.print(
+            f"\n[bold]Recommended action:[/bold] {report.recommended_action}"
+        )
