@@ -1,13 +1,13 @@
 # Bot State
 
-_Last updated: 2026-07-13 23:33 UTC by patrol_
+_Last updated: 2026-07-14 05:05 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 3 |
-| Active (running/reviewing) | 1 |
+| Pending | 4 |
+| Active (running/reviewing) | 0 |
 | Blocked | 0 |
 | Completed/Merged (all time) | 411 |
 
@@ -23,7 +23,6 @@ _Last updated: 2026-07-13 23:33 UTC by patrol_
 
 ## Waiting for Human
 
-- #45: strategy: differentiate from fr_trace -- focus on tamper-proof evidence chain and cross-framework coverage
 - #44: feat: causal ancestor traversal to LLM-assisted root-cause hypothesis layer
 - #40: Fix WasmAgent/wasmagent-train-replay#35 (replay CLI subcommand missing (EpochReplayer exists but not wired to CLI)): imp
 - #34: safemode: SAFE_MODE machinery + `admin safe-mode` subcommand not implemented

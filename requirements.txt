@@ -1,0 +1,9 @@
+# Runtime dependencies for wasmagent-train-replay.
+# Mirrors the [project].dependencies lower bounds in pyproject.toml; install
+# the editable package with `pip install -e ".[dev]"` for the full dev set.
+torch>=2.2.0
+cryptography>=42.0
+pydantic>=2.0
+click>=8.0
+rich>=13.0
+networkx>=3.0
