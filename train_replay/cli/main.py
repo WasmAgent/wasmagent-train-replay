@@ -85,3 +85,93 @@ def record(dump_path: str, run_id: str, epoch: int) -> None:
     bundle = recorder.bundle()
     console.print(f"Recorded [cyan]{len(bundle.actions)}[/cyan] actions")
     console.print(f"Bundle digest: [bold]{bundle.digest()}[/bold]")
+
+
+@cli.command()
+@click.argument("dump_path", type=click.Path(exists=True))
+@click.option("--entity-id", "-e", default=None, help="Entity ID to trace causal ancestors for")
+@click.option("--rank", "-r", type=int, default=None, help="Filter to specific rank")
+@click.option(
+    "--bundle-path", "-b",
+    type=click.Path(exists=True),
+    default=None,
+    help="Evidence bundle JSON for suspicious-action analysis",
+)
+def replay(
+    dump_path: str,
+    entity_id: str | None,
+    rank: int | None,
+    bundle_path: str | None,
+) -> None:
+    """Replay an epoch to identify causal chains and suspicious actions."""
+
+    import json
+
+    from train_replay.collector.flight_recorder import load_flight_recorder
+    from train_replay.graph.builder import build_from_events
+    from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
+    from train_replay.recording.modes import RecordingMode
+    from train_replay.replay.replayer import EpochReplayer
+
+    events = load_flight_recorder(Path(dump_path))
+    if rank is not None:
+        events = [e for e in events if e.rank == rank]
+    console.print(f"Loaded [cyan]{len(events)}[/cyan] collective events")
+
+    graph = build_from_events(events)
+    replayer = EpochReplayer(graph)
+
+    if entity_id:
+        ancestors = replayer.find_root_cause(entity_id)
+        table = Table(title=f"Causal ancestors of {entity_id}")
+        table.add_column("Activity ID", style="cyan")
+        for a in ancestors:
+            table.add_row(a)
+        console.print(table)
+    else:
+        console.print(
+            "[dim]No --entity-id provided; skipping root-cause analysis.[/dim]"
+        )
+
+    if bundle_path:
+        with open(bundle_path) as f:
+            raw = json.load(f)
+        bundle = EpochEvidenceBundle(
+            run_id=raw.get("run_id", ""),
+            epoch=raw.get("epoch", 0),
+            actions=[
+                AEPRecord(
+                    action_id=act.get("action_id", ""),
+                    rank=act.get("rank", 0),
+                    step=act.get("step", 0),
+                    collective_type=act.get("collective_type", ""),
+                    recording_mode=RecordingMode(
+                        act.get("recording_mode", "validation"),
+                    ),
+                    timestamp_ns=act.get("timestamp_ns", 0),
+                )
+                for act in raw.get("actions", [])
+            ],
+        )
+        suspicious = replayer.suspicious_actions(bundle)
+        if rank is not None:
+            suspicious = [s for s in suspicious if s.rank == rank]
+        table = Table(title="Suspicious actions (FULL mode)")
+        table.add_column("Action ID", style="red")
+        table.add_column("Rank")
+        table.add_column("Type")
+        for s in suspicious:
+            table.add_row(s.action_id, str(s.rank), s.collective_type)
+        console.print(table)
+        if not suspicious:
+            console.print("[green]No suspicious actions found.[/green]")
+    else:
+        console.print(
+            "[dim]No --bundle-path provided; skipping suspicious-action"
+            " analysis.[/dim]"
+        )
+
+    if not entity_id and not bundle_path:
+        console.print(
+            "[yellow]Provide --entity-id and/or --bundle-path to analyze.[/yellow]"
+        )
