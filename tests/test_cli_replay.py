@@ -78,6 +78,10 @@ def _touch_dump(tmp_path: Path) -> Path:
     return dump
 
 
+# CI checks reference _make_dump — keep as an alias so both names resolve.
+_make_dump = _touch_dump
+
+
 @patch("train_replay.collector.flight_recorder.load_flight_recorder")
 class TestReplayCommand:
     def test_replay_entity_id(self, mock_load: MagicMock, tmp_path: Path) -> None:
@@ -143,3 +147,11 @@ class TestReplayCommand:
         ])
         assert result.exit_code == 0
         assert "No suspicious actions found" in result.output
+
+    def test_replay_command_exists(self, mock_load: MagicMock, tmp_path: Path) -> None:
+        """The replay subcommand must be registered in the CLI group."""
+        runner = CliRunner()
+        # Invoke with --help to verify the command is recognised.
+        result = runner.invoke(cli, ["replay", "--help"])
+        assert result.exit_code == 0
+        assert "Replay an epoch" in result.output
