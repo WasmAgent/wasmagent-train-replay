@@ -58,3 +58,12 @@ no_site_packages = true
 # which strict mode flags as untyped-decorator.  Allow since all third-party
 # imports are already treated as Any via ignore_missing_imports.
 allow_untyped_decorators = true
+
+# agent_reasoner.py subclasses pydantic.BaseModel and calls
+# model_validate_json which return Any under no_site_packages (since
+# pydantic stubs live in site-packages).  Suppress these two strict-mode
+# checks for that module only.
+[[tool.mypy.overrides]]
+module = "train_replay.agent_reasoner"
+disallow_subclassing_any = false
+warn_return_any = false

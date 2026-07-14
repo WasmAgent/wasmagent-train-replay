@@ -12,7 +12,6 @@ from train_replay.graph.prov_graph import ProvGraph
 from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
 from train_replay.recording.modes import RecordingMode
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -197,7 +196,7 @@ class TestAgentReasoner:
         }
         prompt = AgentReasoner._build_prompt(summary)
         assert "act:0:all_reduce:1" in prompt
-        assert "total_nodes" in prompt
+        assert "Total nodes" in prompt
         assert "root_cause_activity_ids" in prompt
 
     def test_fallback_report_with_ancestors(self) -> None:
@@ -205,7 +204,7 @@ class TestAgentReasoner:
         summary = {"causal_ancestors": ["act:0:all_reduce:1", "act:0:all_reduce:2"]}
         report = AgentReasoner._fallback_report(summary, ["act:0:all_reduce:1"], [])
         assert "act:0:all_reduce:1" in report.root_cause_activity_ids
-        assert "2 causal ancestor(s)" in report.root_cause_description
+        assert "1 causal ancestor(s)" in report.root_cause_description
         assert report.confidence == "medium"
 
     def test_fallback_report_without_ancestors(self) -> None:

@@ -238,7 +238,7 @@ def analyze(
 
     if report.root_cause_activity_ids:
         console.print(
-            f"\n[bold red]Root cause activities:[/bold red]"
+            "\n[bold red]Root cause activities:[/bold red]"
         )
         for aid in report.root_cause_activity_ids:
             console.print(f"  • {aid}")

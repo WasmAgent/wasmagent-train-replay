@@ -11,6 +11,14 @@
 | **NVIDIA NCCL Inspector** | NVIDIA | Real-time NCCL performance monitoring, bandwidth/utilisation dashboards | None — observability only |
 | **wasmagent-train-replay** | WasmAgent | Cross-rank PROV-DM causal graph, Ed25519-signed evidence bundles, deterministic replay | Ed25519 (DSSE-style envelope), SHA-256 digests per bundle |
 
+## Comparison with fr_trace
+
+`fr_trace` and NCCL Inspector excel at real-time observability and per-rank
+timeline debugging.  This project occupies a **complementary layer above** those
+tools — cross-rank causal provenance backed by cryptographic evidence.
+The detailed differentiation is covered in the two sections below and the
+landscape table above.
+
 ## Two gaps official tooling does not cover
 
 ### 1. Tamper-proof evidence chain
@@ -91,13 +99,13 @@ This means:
               (this is the gap we fill)
 ```
 
-## Follow-up work
+## Roadmap
 
-Concrete abstractions still needed (tracked in sibling issues):
+Concrete abstractions still needed (tracked in follow-up issues):
 
-1. **Gloo collector adapter** — parse Gloo trace format into `CollectiveEvent`.
-2. **MTIA collector adapter** — parse MTIA profiler output into `CollectiveEvent`.
+1. **Gloo collector adapter** — parse Gloo trace format into `CollectiveEvent`. (#56)
+2. **MTIA collector adapter** — parse MTIA profiler output into `CollectiveEvent`. (#57)
 3. **`CollisionDetector` backend implementations** — one per backend, plugged into
-   the abstract protocol defined in `train_replay/graph/collision.py`.
+   the abstract protocol defined in `train_replay/graph/collision.py`. (#58)
 4. **Bundle persistence** — serialise `EpochEvidenceBundle` to JSON/CBOR for
-   long-term storage and cross-system transfer.
+   long-term storage and cross-system transfer. (#59)

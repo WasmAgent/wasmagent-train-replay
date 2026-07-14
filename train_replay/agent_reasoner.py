@@ -277,7 +277,8 @@ class AgentReasoner:
             json.JSONDecodeError,
             KeyError,
             ValueError,
-        ) as exc:
+            OSError,
+        ):
             # Fallback on API error
             return self._fallback_report(
                 summary,
