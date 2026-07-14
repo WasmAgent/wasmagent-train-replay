@@ -1,0 +1,289 @@
+"""Tests for backend-specific CollisionDetector implementations."""
+
+import pytest
+
+from train_replay.collector.flight_recorder import CollectiveEvent
+from train_replay.graph.collision import (
+    Collision,
+    CollisionReport,
+    GlooCollisionDetector,
+    MtiaCollisionDetector,
+    NcclCollisionDetector,
+    detect_collisions,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _evt(
+    rank: int,
+    collective_type: str = "all_reduce",
+    seq_id: int = 0,
+    start_time_ns: int = 0,
+) -> CollectiveEvent:
+    """Build a minimal CollectiveEvent for testing."""
+    return CollectiveEvent(
+        rank=rank,
+        process_group="default",
+        collective_type=collective_type,
+        src_rank=None,
+        dst_rank=None,
+        tensor_size=1024,
+        enqueue_time_ns=start_time_ns,
+        start_time_ns=start_time_ns,
+        end_time_ns=start_time_ns + 1000,
+        sequence_id=seq_id,
+    )
+
+
+def _make_nccl_aligned() -> dict[int, list[CollectiveEvent]]:
+    """Two ranks with perfectly aligned NCCL sequences."""
+    return {
+        0: [_evt(0, "all_reduce", seq_id=1), _evt(0, "all_gather", seq_id=2)],
+        1: [_evt(1, "all_reduce", seq_id=1), _evt(1, "all_gather", seq_id=2)],
+    }
+
+
+def _make_nccl_type_mismatch() -> dict[int, list[CollectiveEvent]]:
+    """Rank 1 has a different collective type at seq_id 2."""
+    return {
+        0: [_evt(0, "all_reduce", seq_id=1), _evt(0, "all_gather", seq_id=2)],
+        1: [_evt(1, "all_reduce", seq_id=1), _evt(1, "barrier", seq_id=2)],
+    }
+
+
+def _make_nccl_missing_step() -> dict[int, list[CollectiveEvent]]:
+    """Rank 1 is missing seq_id 3."""
+    return {
+        0: [_evt(0, "all_reduce", seq_id=1), _evt(0, "all_reduce", seq_id=2),
+            _evt(0, "all_reduce", seq_id=3)],
+        1: [_evt(1, "all_reduce", seq_id=1), _evt(1, "all_reduce", seq_id=2)],
+    }
+
+
+# ---------------------------------------------------------------------------
+# CollisionReport basics
+# ---------------------------------------------------------------------------
+
+
+class TestCollisionReport:
+    def test_empty_report_no_collisions(self) -> None:
+        report = CollisionReport()
+        assert not report.has_collisions
+
+    def test_report_with_collision(self) -> None:
+        report = CollisionReport(
+            collisions=[Collision(rank_a=0, rank_b=1, step=5, detail="test")],
+            total_steps_checked=10,
+        )
+        assert report.has_collisions
+        assert report.total_steps_checked == 10
+
+    def test_collision_dataclass_fields(self) -> None:
+        c = Collision(rank_a=0, rank_b=1, step=42, detail="mismatch")
+        assert c.rank_a == 0
+        assert c.rank_b == 1
+        assert c.step == 42
+        assert "mismatch" in c.detail
+
+
+# ---------------------------------------------------------------------------
+# NcclCollisionDetector
+# ---------------------------------------------------------------------------
+
+
+class TestNcclCollisionDetector:
+    def test_aligned_sequences_no_collision(self) -> None:
+        detector = NcclCollisionDetector()
+        report = detector.detect(_make_nccl_aligned())
+        assert not report.has_collisions
+        assert report.total_steps_checked == 2
+
+    def test_type_mismatch_detected(self) -> None:
+        detector = NcclCollisionDetector()
+        report = detector.detect(_make_nccl_type_mismatch())
+        assert report.has_collisions
+        assert report.total_steps_checked == 2
+        # The collision should mention seq_id 2.
+        mismatch = [c for c in report.collisions if c.step == 2]
+        assert len(mismatch) == 1
+        assert "all_gather" in mismatch[0].detail
+        assert "barrier" in mismatch[0].detail
+
+    def test_missing_step_detected(self) -> None:
+        detector = NcclCollisionDetector()
+        report = detector.detect(_make_nccl_missing_step())
+        assert report.has_collisions
+        assert report.total_steps_checked == 3
+        missing = [c for c in report.collisions if c.step == 3]
+        assert len(missing) == 1
+        assert "missing" in missing[0].detail
+
+    def test_single_rank_returns_empty(self) -> None:
+        detector = NcclCollisionDetector()
+        timelines = {0: [_evt(0, "all_reduce", seq_id=1)]}
+        report = detector.detect(timelines)
+        assert not report.has_collisions
+        assert report.total_steps_checked == 0
+
+    def test_empty_timelines(self) -> None:
+        detector = NcclCollisionDetector()
+        report = detector.detect({})
+        assert not report.has_collisions
+
+    def test_three_ranks_aligned(self) -> None:
+        detector = NcclCollisionDetector()
+        timelines = {
+            0: [_evt(0, "all_reduce", seq_id=1)],
+            1: [_evt(1, "all_reduce", seq_id=1)],
+            2: [_evt(2, "all_reduce", seq_id=1)],
+        }
+        report = detector.detect(timelines)
+        assert not report.has_collisions
+
+    def test_three_ranks_partial_mismatch(self) -> None:
+        detector = NcclCollisionDetector()
+        timelines = {
+            0: [_evt(0, "all_reduce", seq_id=1), _evt(0, "all_gather", seq_id=2)],
+            1: [_evt(1, "all_reduce", seq_id=1), _evt(1, "all_gather", seq_id=2)],
+            2: [_evt(2, "all_reduce", seq_id=1), _evt(2, "barrier", seq_id=2)],
+        }
+        report = detector.detect(timelines)
+        assert report.has_collisions
+        # Rank 2 mismatches with the reference rank (rank 0) at seq 2.
+        rank2_collisions = [c for c in report.collisions if c.rank_b == 2]
+        assert len(rank2_collisions) == 1
+        assert "barrier" in rank2_collisions[0].detail
+
+
+# ---------------------------------------------------------------------------
+# GlooCollisionDetector
+# ---------------------------------------------------------------------------
+
+
+class TestGlooCollisionDetector:
+    def test_aligned_timestamps_no_collision(self) -> None:
+        detector = GlooCollisionDetector(tolerance_ns=1_000_000)
+        timelines: dict[int, list[CollectiveEvent]] = {
+            0: [_evt(0, start_time_ns=1000), _evt(0, start_time_ns=2000)],
+            1: [_evt(1, start_time_ns=1100), _evt(1, start_time_ns=2100)],
+        }
+        report = detector.detect(timelines)
+        assert not report.has_collisions
+        assert report.total_steps_checked == 2
+
+    def test_desync_exceeds_tolerance(self) -> None:
+        detector = GlooCollisionDetector(tolerance_ns=100)
+        timelines = {
+            0: [_evt(0, start_time_ns=1000)],
+            1: [_evt(1, start_time_ns=2000)],
+        }
+        report = detector.detect(timelines)
+        assert report.has_collisions
+        assert report.total_steps_checked == 1
+        assert report.collisions[0].step == 0
+        assert "1000" in report.collisions[0].detail  # delta is 1000ns
+
+    def test_default_tolerance_one_ms(self) -> None:
+        detector = GlooCollisionDetector()  # default 1_000_000
+        timelines = {
+            0: [_evt(0, start_time_ns=0)],
+            1: [_evt(1, start_time_ns=500_000)],
+        }
+        report = detector.detect(timelines)
+        assert not report.has_collisions  # 500µs < 1ms
+
+    def test_event_count_mismatch(self) -> None:
+        detector = GlooCollisionDetector(tolerance_ns=1_000_000)
+        timelines = {
+            0: [_evt(0, start_time_ns=1000), _evt(0, start_time_ns=2000)],
+            1: [_evt(1, start_time_ns=1100)],
+        }
+        report = detector.detect(timelines)
+        assert report.has_collisions
+        count_mismatch = [c for c in report.collisions if "Event count" in c.detail]
+        assert len(count_mismatch) == 1
+
+    def test_single_rank_returns_empty(self) -> None:
+        detector = GlooCollisionDetector()
+        report = detector.detect({0: [_evt(0, start_time_ns=1000)]})
+        assert not report.has_collisions
+        assert report.total_steps_checked == 0
+
+    def test_empty_timelines(self) -> None:
+        detector = GlooCollisionDetector()
+        report = detector.detect({})
+        assert not report.has_collisions
+
+    def test_custom_tolerance(self) -> None:
+        detector = GlooCollisionDetector(tolerance_ns=10)
+        timelines = {
+            0: [_evt(0, start_time_ns=0)],
+            1: [_evt(1, start_time_ns=15)],
+        }
+        report = detector.detect(timelines)
+        assert report.has_collisions
+
+
+# ---------------------------------------------------------------------------
+# MtiaCollisionDetector
+# ---------------------------------------------------------------------------
+
+
+class TestMtiaCollisionDetector:
+    def test_raises_not_implemented(self) -> None:
+        detector = MtiaCollisionDetector()
+        with pytest.raises(NotImplementedError, match="MTIA collision detection"):
+            detector.detect({0: [_evt(0)]})
+
+
+# ---------------------------------------------------------------------------
+# detect_collisions factory
+# ---------------------------------------------------------------------------
+
+
+class TestDetectCollisionsFactory:
+    def test_nccl_backend(self) -> None:
+        report = detect_collisions("nccl", _make_nccl_aligned())
+        assert not report.has_collisions
+
+    def test_gloo_backend(self) -> None:
+        timelines = {
+            0: [_evt(0, start_time_ns=1000)],
+            1: [_evt(1, start_time_ns=1100)],
+        }
+        report = detect_collisions("gloo", timelines, tolerance_ns=1_000_000)
+        assert not report.has_collisions
+
+    def test_gloo_backend_type_collision(self) -> None:
+        report = detect_collisions("nccl", _make_nccl_type_mismatch())
+        assert report.has_collisions
+
+    def test_mtia_backend_raises(self) -> None:
+        with pytest.raises(NotImplementedError):
+            detect_collisions("mtia", {0: [_evt(0)]})
+
+    def test_case_insensitive_backend(self) -> None:
+        report = detect_collisions("NCCL", _make_nccl_aligned())
+        assert not report.has_collisions
+
+    def test_unknown_backend_raises(self) -> None:
+        with pytest.raises(ValueError, match="Unknown backend"):
+            detect_collisions("mpi", {0: [_evt(0)]})
+
+
+# ---------------------------------------------------------------------------
+# Import acceptance criteria
+# ---------------------------------------------------------------------------
+
+
+class TestImportAcceptanceCriteria:
+    def test_import_nccl(self) -> None:
+        from train_replay.graph.collision import NcclCollisionDetector as NCC
+        assert NCC is not None
+
+    def test_import_gloo(self) -> None:
+        from train_replay.graph.collision import GlooCollisionDetector as GCD
+        assert GCD is not None
