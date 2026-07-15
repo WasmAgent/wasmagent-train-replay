@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-15 03:34 UTC by patrol_
+_Last updated: 2026-07-15 04:04 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 2 |
+| Pending | 1 |
 | Active (running/reviewing) | 0 |
-| Blocked | 0 |
+| Blocked | 1 |
 | Completed/Merged (all time) | 426 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,7 @@ _Last updated: 2026-07-15 03:34 UTC by patrol_
 
 ## Waiting for Human
 
+- #45: strategy: differentiate from fr_trace -- focus on tamper-proof evidence chain and cross-framework coverage
 - #44: feat: causal ancestor traversal to LLM-assisted root-cause hypothesis layer
 
 ---
