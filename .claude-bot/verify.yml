@@ -1,7 +1,7 @@
 # Mirrors .github/workflows/ci.yml
 commands:
   - name: install
-    cmd: pip install -e ".[dev]" --break-system-packages -q
+    cmd: pip install -e ".[dev]" --user -q
     timeout: 3m
   - name: lint
     cmd: python3 -m ruff check train_replay tests

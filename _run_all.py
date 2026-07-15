@@ -3,7 +3,7 @@ import subprocess, sys
 # Run pip install
 print("=== pip install ===")
 proc = subprocess.Popen(
-    [sys.executable, "-m", "pip", "install", "-e", ".[dev]", "--break-system-packages", "-q"],
+    [sys.executable, "-m", "pip", "install", "-e", ".[dev]", "--user", "-q"],
     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
 )
 stdout, stderr = proc.communicate()
