@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-15 02:06 UTC by patrol_
+_Last updated: 2026-07-15 02:36 UTC by patrol_
 
 ## Queue
 
@@ -9,17 +9,17 @@ _Last updated: 2026-07-15 02:06 UTC by patrol_
 | Pending | 2 |
 | Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 418 |
+| Completed/Merged (all time) | 426 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
-| #57 | feat: MTIA collector adapter — parse MTIA profiler outp... | merged/merged | 2026-07-14 |
-| #63 | Fix WasmAgent/wasmagent-train-replay#56 (feat: Gloo colle... | merged/merged | 2026-07-14 |
-| #61 | Fix WasmAgent/wasmagent-train-replay#59 (feat: EpochEvide... | merged/merged | 2026-07-14 |
-| #58 | feat: CollisionDetector backend implementations — per-b... | merged/merged | 2026-07-14 |
-| #56 | feat: Gloo collector adapter — parse Gloo traces into C... | completed/complexity_gate_split | 2026-07-14 |
+| #32 | panel-harvest #32 | completed/maintenance_done | 2026-07-15 |
+| #30 | panel-harvest #30 | completed/maintenance_done | 2026-07-15 |
+| #39 | panel-harvest #39 | completed/maintenance_done | 2026-07-15 |
+| #38 | panel-harvest #38 | completed/maintenance_done | 2026-07-15 |
+| #38 | [discussion] code-review: Data integrity anomaly in BOT_S... | completed/panel_promoted | 2026-07-15 |
 
 ## Waiting for Human
 
