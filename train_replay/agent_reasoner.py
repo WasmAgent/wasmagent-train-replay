@@ -253,10 +253,9 @@ class AgentReasoner:
             },
         ).encode()
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }
+        headers: dict[str, str] = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}" 
 
         endpoint = self._llm_endpoint.rstrip("/") + "/chat/completions"
 
