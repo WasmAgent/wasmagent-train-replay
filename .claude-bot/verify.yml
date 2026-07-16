@@ -1,18 +1,23 @@
 # Mirrors .github/workflows/ci.yml
+# NOTE: this host uses an externally-managed (PEP 668) Python, so a bare
+# `pip install --user` fails with "externally-managed-environment". Each verify
+# command runs in its own shell, so we create a persistent .venv (gitignored)
+# during install and invoke it by absolute path in later steps — activation does
+# not carry across commands.
 commands:
   - name: install
-    cmd: pip install -e ".[dev]" --user -q
+    cmd: python3 -m venv .venv && .venv/bin/pip install -e ".[dev]" -q
     timeout: 3m
     level: 1
   - name: lint
-    cmd: python3 -m ruff check train_replay tests
+    cmd: .venv/bin/python -m ruff check train_replay tests
     timeout: 2m
     level: 2
   - name: typecheck
-    cmd: python3 -m mypy train_replay
+    cmd: .venv/bin/python -m mypy train_replay
     timeout: 3m
     level: 2
   - name: test
-    cmd: pytest tests/ -x
+    cmd: .venv/bin/python -m pytest tests/ -x
     timeout: 5m
     level: 3
