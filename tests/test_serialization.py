@@ -1,5 +1,7 @@
 """Tests for EpochEvidenceBundle JSON/CBOR serialization round-trips."""
 
+import pytest
+
 from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
 from train_replay.recording.modes import RecordingMode
 
@@ -129,3 +131,41 @@ class TestCborRoundTrip:
         data = bundle.to_cbor()
         assert isinstance(data, bytes)
         assert len(data) > 0
+
+
+# -- Version validation --------------------------------------------------------
+
+
+class TestSchemaVersionCheck:
+    def test_supported_version_accepted(self):
+        """The current schema version must deserialize without error."""
+        bundle = _sample_bundle()
+        restored = EpochEvidenceBundle.from_json(bundle.to_json())
+        assert restored.schema_version == "train-aep/v0.1"
+
+    def test_unsupported_version_raises(self):
+        """_from_dict must raise ValueError for unknown schema versions."""
+        with pytest.raises(ValueError, match="unsupported schema_version: train-aep/v9.9"):
+            EpochEvidenceBundle._from_dict({
+                "schema_version": "train-aep/v9.9",
+                "run_id": "test",
+                "epoch": 0,
+                "actions": [],
+            })
+
+    def test_unsupported_version_via_from_json(self):
+        """from_json must propagate the ValueError from _from_dict."""
+        data = '{"schema_version": "bad-ver", "run_id": "", "epoch": 0, "actions": []}'
+        with pytest.raises(ValueError, match="unsupported schema_version: bad-ver"):
+            EpochEvidenceBundle.from_json(data)
+
+    def test_missing_version_defaults_and_passes(self):
+        """Omitting schema_version falls back to the default, which is supported."""
+        bundle = EpochEvidenceBundle()
+        d = {
+            "run_id": bundle.run_id,
+            "epoch": bundle.epoch,
+            "actions": [],
+        }
+        restored = EpochEvidenceBundle._from_dict(d)
+        assert restored.schema_version == "train-aep/v0.1"

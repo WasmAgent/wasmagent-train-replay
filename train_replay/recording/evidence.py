@@ -26,6 +26,9 @@ class AEPRecord:
     parent_action_id: str | None = None
 
 
+_SUPPORTED_SCHEMA_VERSIONS: frozenset[str] = frozenset({"train-aep/v0.1"})
+
+
 @dataclass
 class EpochEvidenceBundle:
     schema_version: str = "train-aep/v0.1"
@@ -75,6 +78,9 @@ class EpochEvidenceBundle:
     @classmethod
     def _from_dict(cls: type[EpochEvidenceBundle], d: dict[str, Any]) -> EpochEvidenceBundle:
         """Reconstruct a bundle from a plain dict, restoring enum types."""
+        version = d.get("schema_version", "train-aep/v0.1")
+        if version not in _SUPPORTED_SCHEMA_VERSIONS:
+            raise ValueError(f"unsupported schema_version: {version}")
         actions_raw: list[dict[str, Any]] = d.get("actions", [])
         actions = [
             AEPRecord(
@@ -93,7 +99,7 @@ class EpochEvidenceBundle:
             for a in actions_raw
         ]
         return cls(
-            schema_version=d.get("schema_version", "train-aep/v0.1"),
+            schema_version=version,
             run_id=d.get("run_id", ""),
             epoch=d.get("epoch", 0),
             actions=actions,
