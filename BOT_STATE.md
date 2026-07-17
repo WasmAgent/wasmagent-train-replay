@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-17 10:34 UTC by patrol_
+_Last updated: 2026-07-17 11:12 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 11 |
+| Pending | 17 |
 | Active (running/reviewing) | 1 |
-| Blocked | 7 |
-| Completed/Merged (all time) | 453 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 455 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #82 | panel-harvest #82 | completed/maintenance_done | 2026-07-17 |
+| #82 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/panel_harvested_closed | 2026-07-17 |
 | #83 | [milestone Milestone 3 ] Add `tests/test_escalation.py`: ... | merged/auto_closed_resolved | 2026-07-16 |
 | #85 | [milestone Milestone 3 ] Update `docs/integration.md`: ad... | merged/auto_closed_resolved | 2026-07-16 |
 | #75 | [milestone Milestone 2 ] Add `EpochEvidenceBundle._from_d... | merged/merged | 2026-07-16 |
-| #68 | [milestone Milestone 1 ] Fix `replay_rank()` in `train_re... | merged/auto_closed_resolved | 2026-07-16 |
-| #29 | panel-harvest #29 | completed/maintenance_done | 2026-07-16 |
 
 ## Waiting for Human
 
@@ -29,10 +29,10 @@ _Last updated: 2026-07-17 10:34 UTC by patrol_
 - #87: [milestone Milestone 4 ] Add `train_replay/agent/__init__.py` and `train_replay/agent/schema.py`: `TypedD...
 - #86: [milestone Milestone 4 ] Add `train_replay/agent/tools.py`: three JSON-Schema-described tool functions: `...
 - #84: [milestone Milestone 3 ] Add `tests/test_escalation.py`: assert that `PrometheusAnomalySource` yields `No...
-- #82: [milestone Milestone 3 ] Add `EpochRecorder.record_with_escalation(event, escalation)` method in `train_r...
 - #81: [milestone Milestone 3 ] Modify `train_replay/recording/modes.py` `compile_recording_policy()`: add optio...
 - #80: [milestone Milestone 3 ] Add `train_replay/recording/escalation.py`: `EscalationSignal` dataclass (`sourc...
 - #79: [milestone Milestone 2 ] Add `docs/cli-reference.md` entry for the new `export` subcommand with all flags...
+- #78: [milestone Milestone 2 ] Add `docs/auditor-guide.md`: worked example showing `to_json()` and `to_cbor()`,...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
