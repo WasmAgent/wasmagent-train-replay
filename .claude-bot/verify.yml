@@ -1,13 +1,23 @@
 # Mirrors .github/workflows/ci.yml
-# NOTE: this host uses an externally-managed (PEP 668) Python, so a bare
-# `pip install --user` fails with "externally-managed-environment". Each verify
-# command runs in its own shell, so we create a persistent .venv (gitignored)
-# during install and invoke it by absolute path in later steps — activation does
-# not carry across commands.
+# NOTE: this runner uses an externally-managed (PEP 668) Python, so a bare
+# `pip install --user` fails with "externally-managed-environment". We use a
+# gitignored .venv instead. Each verify command runs in its own shell, so the
+# venv is referenced by path (.venv/bin/...) rather than activated.
+#
+# The venv is placed on a large shared disk when available (mounted at
+# /mnt/bigdisk) and falls back to a local .venv-local otherwise, so a mount
+# outage degrades gracefully instead of hanging the install gate.
 commands:
   - name: install
-    cmd: python3 -m venv .venv && .venv/bin/pip install -e ".[dev]" -q
-    timeout: 3m
+    cmd: >-
+      SLUG=$(basename "$PWD");
+      if timeout 8 bash -c "test -d /mnt/bigdisk/venv && touch /mnt/bigdisk/venv/.probe-$SLUG 2>/dev/null && rm -f /mnt/bigdisk/venv/.probe-$SLUG" 2>/dev/null;
+      then VENV=/mnt/bigdisk/venv/$SLUG; echo "[venv] bigdisk: $VENV";
+      else VENV="$PWD/.venv-local"; echo "[venv] local fallback: $VENV"; fi;
+      { [ -x "$VENV/bin/python" ] || python3 -m venv "$VENV"; }
+      && rm -rf .venv && ln -sfn "$VENV" .venv
+      && .venv/bin/pip install -e ".[dev]" -q --no-cache-dir
+    timeout: 5m
     level: 1
   - name: lint
     cmd: .venv/bin/python -m ruff check train_replay tests
