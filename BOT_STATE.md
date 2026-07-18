@@ -1,12 +1,12 @@
 # Bot State
 
-_Last updated: 2026-07-18 21:36 UTC by patrol_
+_Last updated: 2026-07-18 22:05 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 17 |
+| Pending | 18 |
 | Active (running/reviewing) | 0 |
 | Blocked | 2 |
 | Completed/Merged (all time) | 460 |
@@ -23,6 +23,7 @@ _Last updated: 2026-07-18 21:36 UTC by patrol_
 
 ## Waiting for Human
 
+- #117: [milestone Milestone 3] Add `train_replay/recording/escalation.py`: `EscalationSignal` dataclass and `PrometheusAnomalySource`
 - #116: [milestone Milestone 3 ] Add `EpochRecorder.record_with_escalation(event, escalation)` method in `train_r...
 - #106: [milestone Milestone 2] Implement export subcommand in train_replay/cli/main.py with all required flags
 - #99: [milestone Milestone 3.5] Add Prometheus client dependency and configuration to wasmagent-train-replay
@@ -32,7 +33,6 @@ _Last updated: 2026-07-18 21:36 UTC by patrol_
 - #89: [milestone Milestone 4 ] Add `tests/test_agent_tools.py`: call each tool function directly with `examples...
 - #88: [milestone Milestone 4 ] Add `train_replay/cli/main.py` `agent-query` subcommand: `train-replay agent-que...
 - #87: [milestone Milestone 4 ] Add `train_replay/agent/__init__.py` and `train_replay/agent/schema.py`: `TypedD...
-- #80: [milestone Milestone 3 ] Add `train_replay/recording/escalation.py`: `EscalationSignal` dataclass (`sourc...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
