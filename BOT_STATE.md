@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-18 05:49 UTC by patrol_
+_Last updated: 2026-07-18 06:35 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 14 |
-| Active (running/reviewing) | 0 |
-| Blocked | 1 |
+| Pending | 16 |
+| Active (running/reviewing) | 1 |
+| Blocked | 0 |
 | Completed/Merged (all time) | 456 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,8 @@ _Last updated: 2026-07-18 05:49 UTC by patrol_
 
 ## Waiting for Human
 
+- #99: [milestone Milestone 3.5] Add Prometheus client dependency and configuration to wasmagent-train-replay
+- #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 - #94: [milestone Milestone 1 ] Fix `replay_rank()` in `train_replay/replay/replayer.py`: populate `ReplayResult...
 - #90: [milestone Milestone 4 ] Add `docs/agent-integration.md`: worked example of calling the tool interface fr...
 - #89: [milestone Milestone 4 ] Add `tests/test_agent_tools.py`: call each tool function directly with `examples...
@@ -31,8 +33,6 @@ _Last updated: 2026-07-18 05:49 UTC by patrol_
 - #86: [milestone Milestone 4 ] Add `train_replay/agent/tools.py`: three JSON-Schema-described tool functions: `...
 - #80: [milestone Milestone 3 ] Add `train_replay/recording/escalation.py`: `EscalationSignal` dataclass (`sourc...
 - #79: [milestone Milestone 2 ] Add `docs/cli-reference.md` entry for the new `export` subcommand with all flags...
-- #78: [milestone Milestone 2 ] Add `docs/auditor-guide.md`: worked example showing `to_json()` and `to_cbor()`,...
-- #77: [milestone Milestone 2 ] Add `tests/test_export.py`: full round-trip test — sign a bundle, write to JSO...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
