@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-18 09:10 UTC by patrol_
+_Last updated: 2026-07-18 09:47 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 18 |
+| Pending | 12 |
 | Active (running/reviewing) | 0 |
-| Blocked | 0 |
-| Completed/Merged (all time) | 457 |
+| Blocked | 3 |
+| Completed/Merged (all time) | 460 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #100 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | completed/issue_closed_upstream | 2026-07-18 |
+| #101 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/issue_closed_upstream | 2026-07-18 |
+| #96 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/issue_closed_upstream | 2026-07-18 |
 | #104 | [milestone Milestone 2] Create train_replay/signing/signe... | merged/auto_closed_resolved | 2026-07-18 |
 | #45 | strategy: differentiate from fr_trace -- focus on tamper-... | merged/auto_closed_resolved | 2026-07-17 |
-| #82 | panel-harvest #82 | completed/maintenance_done | 2026-07-17 |
-| #82 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/panel_harvested_closed | 2026-07-17 |
-| #83 | [milestone Milestone 3 ] Add `tests/test_escalation.py`: ... | merged/auto_closed_resolved | 2026-07-16 |
 
 ## Waiting for Human
 
