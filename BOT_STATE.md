@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-18 08:09 UTC by patrol_
+_Last updated: 2026-07-18 08:47 UTC by patrol_
 
 ## Queue
 
@@ -8,7 +8,7 @@ _Last updated: 2026-07-18 08:09 UTC by patrol_
 |---|---|
 | Pending | 17 |
 | Active (running/reviewing) | 1 |
-| Blocked | 0 |
+| Blocked | 1 |
 | Completed/Merged (all time) | 457 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,7 @@ _Last updated: 2026-07-18 08:09 UTC by patrol_
 
 ## Waiting for Human
 
+- #106: [milestone Milestone 2] Implement export subcommand in train_replay/cli/main.py with all required flags
 - #99: [milestone Milestone 3.5] Add Prometheus client dependency and configuration to wasmagent-train-replay
 - #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 - #94: [milestone Milestone 1 ] Fix `replay_rank()` in `train_replay/replay/replayer.py`: populate `ReplayResult...
@@ -32,7 +33,6 @@ _Last updated: 2026-07-18 08:09 UTC by patrol_
 - #87: [milestone Milestone 4 ] Add `train_replay/agent/__init__.py` and `train_replay/agent/schema.py`: `TypedD...
 - #80: [milestone Milestone 3 ] Add `train_replay/recording/escalation.py`: `EscalationSignal` dataclass (`sourc...
 - #79: [milestone Milestone 2 ] Add `docs/cli-reference.md` entry for the new `export` subcommand with all flags...
-- #78: [milestone Milestone 2 ] Add `docs/auditor-guide.md`: worked example showing `to_json()` and `to_cbor()`,...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
