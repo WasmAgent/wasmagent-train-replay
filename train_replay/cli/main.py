@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 from pathlib import Path
@@ -39,6 +40,30 @@ def cli(ctx: click.Context) -> None:
 
 
 cli.add_command(admin)
+
+
+@cli.command("agent-query")
+@click.argument("dump_path", type=click.Path(exists=True))
+@click.option("--tool", required=True, help="Agent tool to dispatch")
+@click.option("--args", "args_json", default="{}", show_default=True, help="JSON tool arguments")
+def agent_query(dump_path: str, tool: str, args_json: str) -> None:
+    """Dispatch an agent tool against a Flight Recorder dump and print JSON."""
+    from train_replay.agent.tools import dispatch_tool
+
+    try:
+        parsed_args = json.loads(args_json)
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(f"Invalid JSON for --args: {exc.msg}") from exc
+
+    if not isinstance(parsed_args, dict):
+        raise click.ClickException("--args must be a JSON object")
+
+    try:
+        result = dispatch_tool(tool, Path(dump_path), parsed_args)
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    click.echo(json.dumps(result, sort_keys=True))
 
 
 @cli.command()

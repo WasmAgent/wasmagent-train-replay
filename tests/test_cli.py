@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import pickle
 from pathlib import Path
 
@@ -118,6 +119,52 @@ def test_record_command(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Recorded" in result.output
     assert "Bundle digest" in result.output
+
+
+def test_agent_query_trace_tensor_command(tmp_path: Path) -> None:
+    """agent-query dispatches trace_tensor and prints JSON."""
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "agent-query",
+            str(trace_path),
+            "--tool", "trace_tensor",
+            "--args", '{"entity_id": "tensor:0:1:out"}',
+        ],
+    )
+    assert result.exit_code == 0, f"Exit code {result.exit_code}: {result.output}"
+    payload = json.loads(result.output)
+    assert payload == {
+        "tool": "trace_tensor",
+        "entity_id": "tensor:0:1:out",
+        "causal_ancestors": ["act:0:all_reduce:1"],
+    }
+
+
+def test_agent_query_rejects_invalid_args_json(tmp_path: Path) -> None:
+    """agent-query reports invalid JSON in --args."""
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["agent-query", str(trace_path), "--tool", "trace_tensor", "--args", "{"],
+    )
+    assert result.exit_code != 0
+    assert "Invalid JSON for --args" in result.output
+
+
+def test_agent_query_rejects_unknown_tool(tmp_path: Path) -> None:
+    """agent-query reports unsupported tools."""
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(cli, ["agent-query", str(trace_path), "--tool", "missing"])
+    assert result.exit_code != 0
+    assert "Unknown agent tool: missing" in result.output
 
 
 def test_replay_command(tmp_path: Path) -> None:
