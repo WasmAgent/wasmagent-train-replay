@@ -7,9 +7,12 @@ This is the canonical schema and wire-format reference. The implementation does
 not define a protobuf, msgpack, or custom binary frame: PyTorch Flight Recorder
 input arrives as a Python pickle byte stream, tensor events are in-process
 dataclasses, and AEP evidence is converted to deterministic UTF-8 JSON bytes by
-`EpochEvidenceBundle.canonical_bytes()` before hashing and signing. For how
-these records are produced and consumed see [architecture.md](architecture.md);
-for the surrounding CLI see [cli-reference.md](cli-reference.md).
+`EpochEvidenceBundle.canonical_bytes()` before hashing and signing. Bundle
+persistence uses `EpochEvidenceBundle.to_json()` and `to_cbor()`; the planned
+auditor export package is specified in
+[export-command-design.md](export-command-design.md). For how these records are
+produced and consumed see [architecture.md](architecture.md); for the
+surrounding CLI see [cli-reference.md](cli-reference.md).
 
 All structs in this document are Python dataclasses in the `train_replay`
 package. Field names below are source-level names, and any on-disk
@@ -37,6 +40,7 @@ Contents:
 | `EpochEvidenceBundle` | Produced by `EpochRecorder.bundle()` and signed by `BundleSigner.sign()`. | `canonical_bytes()` returns UTF-8 JSON bytes with keys sorted and `signature` omitted. These bytes are the hash and signature payload. |
 | `AEPRecord` | Embedded in `EpochEvidenceBundle.actions`. | JSON object inside the bundle canonical payload; `RecordingMode` values serialize as their string values (`"validation"`, `"delta"`, `"full"`). |
 | Signing wrapper | Stored in `EpochEvidenceBundle.signature`. | DSSE-style (Delegate Signing for Secure Environments) JSON object with `alg`, `key_id`, and base64 `sig`, where `sig` is the Ed25519 signature over `canonical_bytes()`. |
+| Export package manifest | Planned `train-replay export` directory output. | JSON inventory with source metadata, bundle digest, serialized artifact hashes, and validation status. See [export-command-design.md § Manifest JSON](export-command-design.md#manifest-json). |
 
 The "binary" boundary for evidence is therefore the canonical byte string
 returned by `canonical_bytes()`. That byte string, not the pretty-printed JSON
@@ -44,9 +48,11 @@ shown in examples, is what `digest()`, `BundleSigner.sign()`, and
 `verify_bundle()` operate on.
 
 When persisted outside the current CLI, callers should write either the raw
-Flight Recorder pickle dump or a JSON representation derived from the dataclass
-fields below. The repository does not currently ship a bundle writer command;
-`train-replay record` prints the action count and bundle digest.
+Flight Recorder pickle dump or a JSON/CBOR representation derived from the
+dataclass fields below. The repository does not currently ship a bundle writer
+command; `train-replay record` prints the action count and bundle digest. The
+future export command must not add fields to `EpochEvidenceBundle`; package
+metadata belongs in the export manifest.
 
 ---
 

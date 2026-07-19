@@ -26,6 +26,7 @@ Contents:
 - [`train-replay ingest`](#train-replay-ingest)
 - [`train-replay trace`](#train-replay-trace)
 - [`train-replay record`](#train-replay-record)
+- [Planned `train-replay export`](#planned-train-replay-export)
 
 ## Global
 
@@ -159,6 +160,15 @@ DSSE-style Ed25519 signature envelope.
 train-replay record path/to/nccl_trace.pkl --run-id my-run --epoch 5
 ```
 
+## Planned `train-replay export`
+
+`export` is not implemented in the current CLI. Its command architecture,
+source-data contract, output file layout, JSON/CBOR schema rules, validation
+rules, and complete flag table are specified in
+[export-command-design.md](export-command-design.md). The implementation issue
+for `train-replay export` must satisfy that document before adding the command
+to `train_replay/cli/main.py`.
+
 ## Exit codes & errors
 
 The CLI relies on click's default behaviour: argument validation errors (for
@@ -172,4 +182,6 @@ non-zero with a usage message. Successful commands exit `0`.
   `AEPRecord`, `EpochEvidenceBundle`, `TensorEvent`).
 - [integration.md](integration.md) — wiring the profiler hook into a training
   loop and an end-to-end trace example.
+- [export-command-design.md](export-command-design.md) — planned auditor
+  evidence export command and file package specification.
 - `README.md` — quick start and recording-mode overview.
