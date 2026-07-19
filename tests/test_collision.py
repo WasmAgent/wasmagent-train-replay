@@ -5,12 +5,17 @@ import pytest
 from train_replay.collector.flight_recorder import CollectiveEvent
 from train_replay.graph.collision import (
     Collision,
+    CollisionDetector,
     CollisionReport,
     GlooCollisionDetector,
     MtiaCollisionDetector,
     NcclCollisionDetector,
     detect_collisions,
 )
+from train_replay.graph.prov_graph import ProvGraph
+from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
+from train_replay.recording.modes import RecordingMode
+from train_replay.replay.replayer import EpochReplayer
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -272,6 +277,56 @@ class TestDetectCollisionsFactory:
     def test_unknown_backend_raises(self) -> None:
         with pytest.raises(ValueError, match="Unknown backend"):
             detect_collisions("mpi", {0: [_evt(0)]})
+
+
+# ---------------------------------------------------------------------------
+# Replay integration
+# ---------------------------------------------------------------------------
+
+
+class _RecordingDetector(CollisionDetector):
+    def __init__(self) -> None:
+        self.timelines: dict[int, list[CollectiveEvent]] | None = None
+        self.report = CollisionReport(
+            collisions=[Collision(rank_a=2, rank_b=2, step=7, detail="detected")],
+            total_steps_checked=1,
+        )
+
+    def detect(
+        self,
+        timelines: dict[int, list[CollectiveEvent]],
+    ) -> CollisionReport:
+        self.timelines = timelines
+        return self.report
+
+
+class TestReplayRankCollisionReport:
+    def test_replay_rank_populates_collision_report_from_rank_events(self) -> None:
+        detector = _RecordingDetector()
+        replayer = EpochReplayer(ProvGraph(), detector=detector)
+        rank_event = AEPRecord(
+            action_id="rank-2-step-7",
+            rank=2,
+            step=7,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        other_rank_event = AEPRecord(
+            action_id="rank-3-step-7",
+            rank=3,
+            step=7,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        bundle = EpochEvidenceBundle(
+            epoch=11,
+            actions=[rank_event, other_rank_event],
+        )
+
+        result = replayer.replay_rank(bundle, rank=2, entity_id="missing-entity")
+
+        assert result.collision_report is detector.report
+        assert detector.timelines == {2: [rank_event]}
 
 
 # ---------------------------------------------------------------------------

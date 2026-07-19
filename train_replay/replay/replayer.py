@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import AEPRecord, EpochEvidenceBundle
@@ -82,9 +82,19 @@ class EpochReplayer:
         suspicious = [
             a for a in self.suspicious_actions(bundle) if a.rank == rank
         ]
+        events = cast(
+            "list[CollectiveEvent]",
+            [a for a in bundle.actions if a.rank == rank],
+        )
+        collision_report = (
+            self.check_collisions({rank: events})
+            if self._detector is not None
+            else None
+        )
         return ReplayResult(
             epoch=bundle.epoch,
             rank=rank,
             causal_ancestors=ancestors,
             suspicious_actions=suspicious,
+            collision_report=collision_report,
         )
