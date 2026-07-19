@@ -1,5 +1,6 @@
 """Tests for recording mode logic."""
 
+from train_replay.recording.escalation import EscalationSignal
 from train_replay.recording.modes import (
     RecordingMode,
     RiskContext,
@@ -36,3 +37,14 @@ def test_taint_chain_on_mutate_yields_full():
 def test_unknown_class_yields_full():
     ctx = RiskContext(side_effect_class=SideEffectClass.UNKNOWN)
     assert compile_recording_policy(ctx).mode == RecordingMode.FULL
+
+
+def test_external_escalation_signal_yields_full():
+    signal = EscalationSignal(source="nccl-inspector", reason="collective anomaly")
+
+    for side_effect_class in SideEffectClass:
+        ctx = RiskContext(side_effect_class=side_effect_class)
+        policy = compile_recording_policy(ctx, escalation=signal)
+
+        assert policy.mode == RecordingMode.FULL
+        assert policy.reason == "external escalation signal"

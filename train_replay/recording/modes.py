@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from train_replay.recording.escalation import EscalationSignal
+
 
 class RecordingMode(str, Enum):
     VALIDATION = "validation"
@@ -34,8 +36,12 @@ class RecordingPolicy:
     reason: str
 
 
-def compile_recording_policy(ctx: RiskContext) -> RecordingPolicy:
+def compile_recording_policy(
+    ctx: RiskContext, escalation: EscalationSignal | None = None
+) -> RecordingPolicy:
     """Port of capability-compiler's compileToRecordingPolicy. Priority order matches TS."""
+    if escalation is not None:
+        return RecordingPolicy(RecordingMode.FULL, "external escalation signal")
     if ctx.was_vetted:
         return RecordingPolicy(RecordingMode.FULL, "tool flagged by vetting")
     if ctx.has_consent_anomaly:
