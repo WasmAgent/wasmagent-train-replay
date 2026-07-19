@@ -183,6 +183,11 @@ tool_use = {
 
 dump_path = Path("examples/sample_trace.pkl")
 result = dispatch_tool(tool_use["name"], dump_path, tool_use["input"])
+tool_result = {
+    "type": "tool_result",
+    "tool_use_id": tool_use["id"],
+    "content": [{"type": "json", "json": result}],
+}
 ```
 
 The same call is also available through the CLI:
