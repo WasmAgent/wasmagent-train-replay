@@ -36,3 +36,11 @@ def test_taint_chain_on_mutate_yields_full():
 def test_unknown_class_yields_full():
     ctx = RiskContext(side_effect_class=SideEffectClass.UNKNOWN)
     assert compile_recording_policy(ctx).mode == RecordingMode.FULL
+
+
+def test_escalation_signal_yields_full_with_external_reason():
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    policy = compile_recording_policy(ctx, escalation={"source": "nccl-inspector"})
+
+    assert policy.mode == RecordingMode.FULL
+    assert policy.reason == "external escalation signal"
