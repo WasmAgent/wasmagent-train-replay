@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-19 06:32 UTC by patrol_
+_Last updated: 2026-07-19 07:31 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 14 |
+| Pending | 13 |
 | Active (running/reviewing) | 1 |
-| Blocked | 2 |
-| Completed/Merged (all time) | 462 |
+| Blocked | 5 |
+| Completed/Merged (all time) | 463 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #89 | [milestone Milestone 4 ] Add `tests/test_agent_tools.py`:... | completed/complexity_gate_split | 2026-07-19 |
 | #74 | [milestone Milestone 2 ] Add `train_replay/signing/signer... | merged/merged | 2026-07-19 |
 | #78 | [milestone Milestone 2 ] Add `docs/auditor-guide.md`: wor... | merged/auto_closed_resolved | 2026-07-19 |
 | #100 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | completed/issue_closed_upstream | 2026-07-18 |
 | #101 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/issue_closed_upstream | 2026-07-18 |
-| #96 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/issue_closed_upstream | 2026-07-18 |
 
 ## Waiting for Human
 
@@ -31,8 +31,8 @@ _Last updated: 2026-07-19 06:32 UTC by patrol_
 - #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 - #94: [milestone Milestone 1 ] Fix `replay_rank()` in `train_replay/replay/replayer.py`: populate `ReplayResult...
 - #90: [milestone Milestone 4 ] Add `docs/agent-integration.md`: worked example of calling the tool interface fr...
-- #89: [milestone Milestone 4 ] Add `tests/test_agent_tools.py`: call each tool function directly with `examples...
 - #88: [milestone Milestone 4 ] Add `train_replay/cli/main.py` `agent-query` subcommand: `train-replay agent-que...
+- #87: [milestone Milestone 4 ] Add `train_replay/agent/__init__.py` and `train_replay/agent/schema.py`: `TypedD...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
