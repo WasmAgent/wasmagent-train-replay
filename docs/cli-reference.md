@@ -17,8 +17,9 @@ All path arguments are click paths with `path_type=Path`, so command handlers
 receive `pathlib.Path` objects before passing them to the collector.
 
 The CLI is intentionally read-mostly: `ingest` and `trace` build graphs in
-memory, and `record` prints a digest for the generated bundle. It does not write
-graph or bundle files in the current release.
+memory, and `record` prints a digest for the generated bundle. `export` is the
+one command that writes to disk: it materialises a signed `EpochEvidenceBundle`
+to a file (JSON or CBOR) for auditor evidence.
 
 Contents:
 
@@ -26,6 +27,7 @@ Contents:
 - [`train-replay ingest`](#train-replay-ingest)
 - [`train-replay trace`](#train-replay-trace)
 - [`train-replay record`](#train-replay-record)
+- [`train-replay export`](#train-replay-export)
 
 ## Global
 
@@ -157,6 +159,77 @@ DSSE-style Ed25519 signature envelope.
 
 ```bash
 train-replay record path/to/nccl_trace.pkl --run-id my-run --epoch 5
+```
+
+## `train-replay export`
+
+Export a signed `EpochEvidenceBundle` to a file — the write-side companion to
+`record`. Where `record` only prints a digest, `export` materialises the
+tamper-evident bundle to disk in either canonical JSON or compact CBOR and
+attaches a DSSE-style Ed25519 signature before writing.
+
+This is the command an auditor-facing workflow runs to produce the artefact that
+`verify_bundle()` later checks against an Ed25519 public key. See
+[protocol.md](protocol.md) for the `EpochEvidenceBundle` and signature-envelope
+field schemas.
+
+### Usage
+
+```
+train-replay export [OPTIONS] DUMP_PATH
+```
+
+### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `DUMP_PATH` | path (must exist) | yes | Flight Recorder pickle dump to record evidence from (same loader as `ingest`/`record`). |
+
+### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--format` | choice: `json` \| `cbor` | `json` | Serialisation format of the written bundle. `json` is canonical, sorted-key text (`to_json()`); `cbor` is the compact binary equivalent (`to_cbor()`). Both round-trip through `from_json()` / `from_cbor()`. |
+| `--output` | path | *(required)* | Destination file path. The signed bundle is written here, overwriting any existing file. |
+| `--sign-key` | string (hex) | *(required)* | Ed25519 private key as a raw hex string (64 hex chars / 32 bytes). Decoded via `train_replay.signing.load_private_key_hex()` and wrapped in a `BundleSigner` that signs the bundle. |
+| `--run-id` | string | `dev-run` | Training run identifier written to the bundle (same semantics as `record`). |
+| `--epoch` | int | `0` | Epoch index written to the bundle (same semantics as `record`). |
+
+### What it does
+
+1. `load_flight_recorder(DUMP_PATH)` → `list[CollectiveEvent]`.
+2. Creates `EpochRecorder(run_id=..., epoch=...)` and calls
+   `record_collective(evt)` for every event — the same recording path as
+   `record`, classifying each collective through the recording policy.
+3. `recorder.bundle()` → unsigned `EpochEvidenceBundle`.
+4. `load_private_key_hex(--sign-key)` → `Ed25519PrivateKey`, wrapped as a
+   `BundleSigner`. `signer.sign(bundle)` sets `bundle.signature` to the
+   DSSE-style envelope (`alg`, `key_id`, base64-encoded `sig`).
+5. Writes the signed bundle to `--output`: `bundle.to_json()` when
+   `--format json`, or `bundle.to_cbor()` when `--format cbor`.
+6. Prints the output path, the bundle digest (`bundle.digest()`, the sha256 of
+   `canonical_bytes()`), and the signature `key_id`.
+
+The written file is tamper-evident and round-trippable: re-reading it with
+`EpochEvidenceBundle.from_json()` / `from_cbor()` and calling
+`verify_bundle(bundle, public_key)` with the matching Ed25519 public key
+confirms the signature.
+
+### Example
+
+```bash
+# Export a canonical-JSON bundle signed with a hex Ed25519 private key
+train-replay export path/to/nccl_trace.pkl \
+  --format json \
+  --output evidence/epoch5.json \
+  --sign-key 9d2f4a1b...e1c \
+  --run-id my-run --epoch 5
+
+# Compact CBOR for storage-constrained audit archives
+train-replay export path/to/nccl_trace.pkl \
+  --format cbor \
+  --output evidence/epoch5.cbor \
+  --sign-key 9d2f4a1b...e1c
 ```
 
 ## Exit codes & errors
