@@ -55,6 +55,99 @@ Register this tool with the agent runtime:
 the model. That keeps the model's arguments limited to the schema-validated
 debugging request while the host controls local file access.
 
+## Message schemas
+
+The agent runtime should accept a `tool_use` envelope that identifies the tool
+and carries the schema-validated input:
+
+```json
+{
+  "$id": "https://wasmagent.dev/schemas/train-replay/tool-use.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "id", "name", "input"],
+  "properties": {
+    "type": {
+      "const": "tool_use"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "const": "trace_tensor"
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id"],
+      "properties": {
+        "entity_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
+```
+
+The host returns a matching `tool_result` envelope. The `tool_use_id` links the
+result to the original request, and `content[0].json` is the root-cause payload
+returned by `trace_tensor`:
+
+```json
+{
+  "$id": "https://wasmagent.dev/schemas/train-replay/tool-result.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "tool_use_id", "content"],
+  "properties": {
+    "type": {
+      "const": "tool_result"
+    },
+    "tool_use_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "json"],
+        "properties": {
+          "type": {
+            "const": "json"
+          },
+          "json": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tool", "entity_id", "causal_ancestors"],
+            "properties": {
+              "tool": {
+                "const": "trace_tensor"
+              },
+              "entity_id": {
+                "type": "string"
+              },
+              "causal_ancestors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ## Example `tool_use`
 
 When the agent identifies an anomalous output tensor, it emits a tool call like
