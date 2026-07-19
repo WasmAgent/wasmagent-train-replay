@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from ..collector.flight_recorder import CollectiveEvent
 from .evidence import AEPRecord, EpochEvidenceBundle
-from .modes import RecordingMode, RiskContext, SideEffectClass, compile_recording_policy
+from .modes import (
+    EscalationSignal,
+    RecordingMode,
+    RiskContext,
+    SideEffectClass,
+    compile_recording_policy,
+)
 
 
 def _collective_side_effect(ctype: str) -> SideEffectClass:
@@ -38,6 +44,22 @@ class EpochRecorder:
             collective_type=evt.collective_type,
             recording_mode=policy.mode,
             timestamp_ns=evt.start_time_ns,
+        ))
+
+    def record_with_escalation(
+        self, event: CollectiveEvent, escalation: EscalationSignal
+    ) -> None:
+        ctx = RiskContext(
+            side_effect_class=_collective_side_effect(event.collective_type)
+        )
+        policy = compile_recording_policy(ctx, escalation=escalation)
+        self._bundle.actions.append(AEPRecord(
+            action_id=f"r{event.rank}:seq{event.sequence_id}",
+            rank=event.rank,
+            step=event.sequence_id,
+            collective_type=event.collective_type,
+            recording_mode=policy.mode,
+            timestamp_ns=event.start_time_ns,
         ))
 
     def escalate_rank(self, rank: int) -> None:
