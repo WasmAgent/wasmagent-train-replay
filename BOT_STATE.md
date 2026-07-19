@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-19 05:59 UTC by patrol_
+_Last updated: 2026-07-19 06:32 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 15 |
+| Pending | 14 |
 | Active (running/reviewing) | 1 |
 | Blocked | 2 |
-| Completed/Merged (all time) | 461 |
+| Completed/Merged (all time) | 462 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #74 | [milestone Milestone 2 ] Add `train_replay/signing/signer... | merged/merged | 2026-07-19 |
 | #78 | [milestone Milestone 2 ] Add `docs/auditor-guide.md`: wor... | merged/auto_closed_resolved | 2026-07-19 |
 | #100 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | completed/issue_closed_upstream | 2026-07-18 |
 | #101 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/issue_closed_upstream | 2026-07-18 |
 | #96 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/issue_closed_upstream | 2026-07-18 |
-| #104 | [milestone Milestone 2] Create train_replay/signing/signe... | merged/auto_closed_resolved | 2026-07-18 |
 
 ## Waiting for Human
 
