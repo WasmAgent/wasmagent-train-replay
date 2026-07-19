@@ -120,6 +120,23 @@ def test_record_command(tmp_path: Path) -> None:
     assert "Bundle digest" in result.output
 
 
+def test_cli_reference_documents_export_command() -> None:
+    """CLI reference includes the export entry and every exposed export flag."""
+    docs_path = Path("docs/cli-reference.md")
+    assert docs_path.stat().st_size > 0
+
+    docs = docs_path.read_text(encoding="utf-8")
+    result = CliRunner().invoke(cli, ["export", "--help"])
+    assert result.exit_code == 0, f"Exit code {result.exit_code}: {result.output}"
+
+    assert "## `train-replay export`" in docs
+    assert "train-replay export [OPTIONS] DUMP_PATH" in docs
+    assert "`DUMP_PATH`" in docs
+    for flag in ("--format", "--output", "--sign-key", "--run-id", "--epoch"):
+        assert flag in result.output
+        assert f"`{flag}`" in docs
+
+
 def test_replay_command(tmp_path: Path) -> None:
     """replay command prints replay result with causal ancestors."""
     trace_path = tmp_path / "trace.pkl"

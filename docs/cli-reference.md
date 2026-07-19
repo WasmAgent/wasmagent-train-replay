@@ -13,8 +13,8 @@ train-replay = "train_replay.cli.main:cli"
 
 Source: `train_replay/cli/main.py`.
 
-All path arguments are click paths with `path_type=Path`, so command handlers
-receive `pathlib.Path` objects before passing them to the collector.
+All path arguments are validated by click before command handlers convert them
+to `pathlib.Path` objects for the collector.
 
 The CLI is intentionally read-mostly: `ingest` and `trace` build graphs in
 memory, and `record` prints a digest for the generated bundle. `export` is the
@@ -191,7 +191,7 @@ train-replay export [OPTIONS] DUMP_PATH
 |---|---|---|---|
 | `--format` | choice: `json` \| `cbor` | `json` | Serialisation format of the written bundle. `json` is canonical, sorted-key text (`to_json()`); `cbor` is the compact binary equivalent (`to_cbor()`). Both round-trip through `from_json()` / `from_cbor()`. |
 | `--output` | path | *(required)* | Destination file path. The signed bundle is written here, overwriting any existing file. |
-| `--sign-key` | string (hex) | *(required)* | Ed25519 private key as a raw hex string (64 hex chars / 32 bytes). Decoded via `train_replay.signing.load_private_key_hex()` and wrapped in a `BundleSigner` that signs the bundle. |
+| `--sign-key` | string (hex) | *(required)* | Ed25519 private key as a raw hex string (64 hex chars / 32 bytes). Decoded with `Ed25519PrivateKey.from_private_bytes()` and wrapped in a `BundleSigner` that signs the bundle. |
 | `--run-id` | string | `dev-run` | Training run identifier written to the bundle (same semantics as `record`). |
 | `--epoch` | int | `0` | Epoch index written to the bundle (same semantics as `record`). |
 
@@ -202,9 +202,10 @@ train-replay export [OPTIONS] DUMP_PATH
    `record_collective(evt)` for every event — the same recording path as
    `record`, classifying each collective through the recording policy.
 3. `recorder.bundle()` → unsigned `EpochEvidenceBundle`.
-4. `load_private_key_hex(--sign-key)` → `Ed25519PrivateKey`, wrapped as a
-   `BundleSigner`. `signer.sign(bundle)` sets `bundle.signature` to the
-   DSSE-style envelope (`alg`, `key_id`, base64-encoded `sig`).
+4. `--sign-key` is decoded to an `Ed25519PrivateKey`. The command derives a
+   stable `key_id` from the public key bytes, wraps the key in a `BundleSigner`,
+   and calls `signer.sign(bundle)` to set `bundle.signature` to the DSSE-style
+   envelope (`alg`, `key_id`, base64-encoded `sig`).
 5. Writes the signed bundle to `--output`: `bundle.to_json()` when
    `--format json`, or `bundle.to_cbor()` when `--format cbor`.
 6. Prints the output path, the bundle digest (`bundle.digest()`, the sha256 of

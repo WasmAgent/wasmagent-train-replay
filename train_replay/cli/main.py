@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 from pathlib import Path
@@ -105,6 +106,84 @@ def record(ctx: click.Context, dump_path: str, run_id: str, epoch: int) -> None:
     bundle = recorder.bundle()
     console.print(f"Recorded [cyan]{len(bundle.actions)}[/cyan] actions")
     console.print(f"Bundle digest: [bold]{bundle.digest()}[/bold]")
+
+
+@cli.command()
+@click.argument("dump_path", type=click.Path(exists=True))
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "cbor"], case_sensitive=False),
+    default="json",
+    show_default=True,
+    help="Evidence bundle serialization format.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    type=click.Path(dir_okay=False),
+    required=True,
+    help="Destination file for the signed evidence bundle.",
+)
+@click.option(
+    "--sign-key",
+    required=True,
+    help="Raw Ed25519 private key as a 64-character hex string.",
+)
+@click.option("--run-id", default="dev-run", show_default=True)
+@click.option("--epoch", default=0, type=int, show_default=True)
+@click.pass_context
+def export(
+    ctx: click.Context,
+    dump_path: str,
+    output_format: str,
+    output_path: str,
+    sign_key: str,
+    run_id: str,
+    epoch: int,
+) -> None:
+    """Export a signed AEP evidence bundle to JSON or CBOR."""
+    safe_mode: SafeMode = ctx.obj["safe_mode"]
+    try:
+        safe_mode.check("export")
+    except SafeModeError as exc:
+        raise click.ClickException(str(exc))
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from train_replay.collector.flight_recorder import load_flight_recorder
+    from train_replay.recording.recorder import EpochRecorder
+    from train_replay.signing.signer import BundleSigner
+
+    try:
+        private_key = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(sign_key))
+    except ValueError as exc:
+        raise click.ClickException(
+            "--sign-key must be a 64-character hex Ed25519 private key"
+        ) from exc
+
+    public_key_bytes = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    key_id = hashlib.sha256(public_key_bytes).hexdigest()[:16]
+
+    events = load_flight_recorder(Path(dump_path))
+    recorder = EpochRecorder(run_id=run_id, epoch=epoch)
+    for evt in events:
+        recorder.record_collective(evt)
+    bundle = BundleSigner(private_key, key_id=key_id).sign(recorder.bundle())
+
+    output = Path(output_path)
+    if output_format.lower() == "json":
+        output.write_text(bundle.to_json(), encoding="utf-8")
+    else:
+        output.write_bytes(bundle.to_cbor())
+
+    console.print(f"Exported [cyan]{len(bundle.actions)}[/cyan] actions to {output}")
+    console.print(f"Bundle digest: [bold]{bundle.digest()}[/bold]")
+    console.print(f"Signature key id: [bold]{key_id}[/bold]")
 
 
 @cli.command()
