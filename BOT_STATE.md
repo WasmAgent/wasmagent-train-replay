@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-19 14:43 UTC by patrol_
+_Last updated: 2026-07-19 15:15 UTC by patrol_
 
 ## Queue
 
@@ -8,18 +8,18 @@ _Last updated: 2026-07-19 14:43 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 1 |
-| Blocked | 1 |
-| Completed/Merged (all time) | 484 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 485 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #124 | Fix WasmAgent/wasmagent-train-replay#89 ([milestone Miles... | merged/auto_closed_resolved | 2026-07-19 |
 | #142 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/merged | 2026-07-19 |
 | #139 | [milestone Milestone 2 ] Add `train_replay/signing/signer... | merged/auto_closed_resolved | 2026-07-19 |
 | #141 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-19 |
 | #140 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-19 |
-| #95 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-19 |
 
 ## Waiting for Human
 
