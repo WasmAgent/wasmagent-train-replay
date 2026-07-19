@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-19 15:15 UTC by patrol_
+_Last updated: 2026-07-19 15:46 UTC by patrol_
 
 ## Queue
 
@@ -8,7 +8,7 @@ _Last updated: 2026-07-19 15:15 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 1 |
-| Blocked | 0 |
+| Blocked | 1 |
 | Completed/Merged (all time) | 485 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,7 @@ _Last updated: 2026-07-19 15:15 UTC by patrol_
 
 ## Waiting for Human
 
+- #144: [milestone Milestone 4 ] Add `train_replay/agent/__init__.py` and `train_replay/agent/schema.py`: `TypedD...
 - #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 - #90: [milestone Milestone 4 ] Add `docs/agent-integration.md`: worked example of calling the tool interface fr...
 
