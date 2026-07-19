@@ -16,7 +16,7 @@ commands:
       else VENV="$PWD/.venv-local"; echo "[venv] local fallback: $VENV"; fi;
       { [ -x "$VENV/bin/python" ] || python3 -m venv "$VENV"; }
       && rm -rf .venv && ln -sfn "$VENV" .venv
-      && .venv/bin/pip install -e ".[dev]" -q --no-cache-dir
+      && .venv/bin/pip install -e ".[dev]" -q --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu
     timeout: 5m
     level: 1
   - name: lint
