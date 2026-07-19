@@ -12,6 +12,24 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from ..recording.evidence import EpochEvidenceBundle
 
 
+def load_private_key_hex(hex_str: str) -> Ed25519PrivateKey:
+    """Load an Ed25519PrivateKey from a 64-char hex string (32 raw bytes).
+
+    Lets the CLI accept a raw hex key without callers constructing
+    cryptography objects directly.
+    """
+    try:
+        raw = bytes.fromhex(hex_str)
+    except ValueError as exc:
+        raise ValueError(f"private key is not valid hex: {exc}") from exc
+    if len(raw) != 32:
+        raise ValueError(
+            "Ed25519 private key must be 32 bytes (64 hex chars), "
+            f"got {len(raw)} byte(s)"
+        )
+    return Ed25519PrivateKey.from_private_bytes(raw)
+
+
 class BundleSigner:
     def __init__(self, private_key: Ed25519PrivateKey, key_id: str) -> None:
         self._key = private_key
