@@ -2,6 +2,7 @@
 
 from .schema import (
     AgentToolInput,
+    AgentToolName,
     AgentToolOutput,
     TraceTensorInput,
     TraceTensorOutput,
@@ -9,6 +10,7 @@ from .schema import (
 
 __all__ = [
     "AgentToolInput",
+    "AgentToolName",
     "AgentToolOutput",
     "TraceTensorInput",
     "TraceTensorOutput",
