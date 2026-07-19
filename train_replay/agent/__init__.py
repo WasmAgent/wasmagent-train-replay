@@ -7,6 +7,7 @@ from .schema import (
     TraceTensorInput,
     TraceTensorOutput,
 )
+from .tools import dispatch_tool, trace_tensor
 
 __all__ = [
     "AgentToolInput",
@@ -14,4 +15,6 @@ __all__ = [
     "AgentToolOutput",
     "TraceTensorInput",
     "TraceTensorOutput",
+    "dispatch_tool",
+    "trace_tensor",
 ]
