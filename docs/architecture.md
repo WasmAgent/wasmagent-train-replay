@@ -6,7 +6,8 @@
 This document is the system-level reference. For wire formats and field-by-field
 schemas see [protocol.md](protocol.md). For wiring the profiler into a real
 training loop see [integration.md](integration.md). For command-line usage see
-[cli-reference.md](cli-reference.md).
+[cli-reference.md](cli-reference.md). For the planned auditor evidence export
+package see [export-command-design.md](export-command-design.md).
 
 ## Design goals
 
@@ -88,7 +89,7 @@ recording layers never parse raw PyTorch data directly; they receive
 | **recording** | `train_replay/recording/` | Decides *what* to record per collective via the recording policy, and accumulates it into an `EpochEvidenceBundle`. |
 | **replay** | `train_replay/replay/` | Traces a tensor back to its causal ancestors and flags suspicious (FULL-mode) actions. |
 | **signing** | `train_replay/signing/` | Ed25519-signs a bundle into a DSSE-style envelope and verifies signatures. |
-| **cli** | `train_replay/cli/` | `ingest`, `trace`, `record` subcommands (entry point `train-replay`). |
+| **cli** | `train_replay/cli/` | `ingest`, `trace`, `record` subcommands (entry point `train-replay`); the planned `export` subcommand is specified separately before implementation. |
 
 ### collector
 
@@ -138,6 +139,11 @@ canonical bytes and checks the signature. See
 The `train-replay` entry point (defined in `pyproject.toml` as
 `train-replay = "train_replay.cli.main:cli"`) wires the above together for
 interactive use. Full flag reference: [cli-reference.md](cli-reference.md).
+The future `export` command must keep the same component boundaries: collectors
+normalize backend-specific traces into event records, `EpochRecorder` creates
+or preserves the `EpochEvidenceBundle`, and export writes JSON/CBOR bundle
+artifacts plus a manifest. Its full design contract is
+[export-command-design.md](export-command-design.md).
 
 ## PROV-DM data model
 
