@@ -4,9 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, TypeAlias
 
-EscalationSignal: TypeAlias = Any
+from train_replay.recording.escalation import EscalationSignal
+
+__all__ = [
+    "EscalationSignal",
+    "RecordingMode",
+    "RecordingPolicy",
+    "RiskContext",
+    "SideEffectClass",
+    "compile_recording_policy",
+]
 
 
 class RecordingMode(str, Enum):
