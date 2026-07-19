@@ -326,7 +326,13 @@ class TestReplayRankCollisionReport:
         result = replayer.replay_rank(bundle, rank=2, entity_id="missing-entity")
 
         assert result.collision_report is detector.report
-        assert detector.timelines == {2: [rank_event]}
+        assert detector.timelines is not None
+        assert list(detector.timelines) == [2]
+        replayed_event = detector.timelines[2][0]
+        assert isinstance(replayed_event, CollectiveEvent)
+        assert replayed_event.rank == rank_event.rank
+        assert replayed_event.collective_type == rank_event.collective_type
+        assert replayed_event.sequence_id == rank_event.step
 
 
 # ---------------------------------------------------------------------------

@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
+from ..collector.flight_recorder import CollectiveEvent
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import AEPRecord, EpochEvidenceBundle
 from ..recording.modes import RecordingMode
 
 if TYPE_CHECKING:
-    from ..collector.flight_recorder import CollectiveEvent
     from ..graph.collision import CollisionDetector, CollisionReport
 
 
@@ -82,10 +82,11 @@ class EpochReplayer:
         suspicious = [
             a for a in self.suspicious_actions(bundle) if a.rank == rank
         ]
-        events = cast(
-            "list[CollectiveEvent]",
-            [a for a in bundle.actions if a.rank == rank],
-        )
+        events = [
+            self._record_to_collective_event(a)
+            for a in bundle.actions
+            if a.rank == rank
+        ]
         collision_report = (
             self.check_collisions({rank: events})
             if self._detector is not None
@@ -97,4 +98,19 @@ class EpochReplayer:
             causal_ancestors=ancestors,
             suspicious_actions=suspicious,
             collision_report=collision_report,
+        )
+
+    @staticmethod
+    def _record_to_collective_event(record: AEPRecord) -> CollectiveEvent:
+        return CollectiveEvent(
+            rank=record.rank,
+            process_group="default",
+            collective_type=record.collective_type,
+            src_rank=None,
+            dst_rank=None,
+            tensor_size=0,
+            enqueue_time_ns=record.timestamp_ns,
+            start_time_ns=record.timestamp_ns,
+            end_time_ns=record.timestamp_ns,
+            sequence_id=record.step,
         )
