@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-19 19:20 UTC by patrol_
+_Last updated: 2026-07-19 19:48 UTC by patrol_
 
 ## Queue
 
@@ -9,7 +9,7 @@ _Last updated: 2026-07-19 19:20 UTC by patrol_
 | Pending | 1 |
 | Active (running/reviewing) | 0 |
 | Blocked | 1 |
-| Completed/Merged (all time) | 490 |
+| Completed/Merged (all time) | 491 |
 
 ## Recent Activity (last 5)
 
@@ -19,7 +19,7 @@ _Last updated: 2026-07-19 19:20 UTC by patrol_
 | #146 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | completed/maintenance_done | 2026-07-19 |
 | #146 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | completed/maintenance_done | 2026-07-19 |
 | #146 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | completed/maintenance_done | 2026-07-19 |
-| #144 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/auto_closed_resolved | 2026-07-19 |
+| #146 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | completed/maintenance_done | 2026-07-19 |
 
 ## Waiting for Human
 
