@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import binascii
 import json
 import pickle
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from train_replay.cli.main import cli
 from train_replay.cli.safemode import SafeMode
@@ -119,6 +121,42 @@ def test_record_command(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert "Recorded" in result.output
     assert "Bundle digest" in result.output
+
+
+def _hex_key() -> str:
+    """A fresh Ed25519 private key encoded as 64-char hex."""
+    return binascii.hexlify(Ed25519PrivateKey.generate().private_bytes_raw()).decode()
+
+
+def test_record_command_signs_bundle_with_hex_key(tmp_path: Path) -> None:
+    """record --signing-key-hex signs the bundle via load_private_key_hex.
+
+    The CLI must accept a raw hex key without the caller constructing any
+    cryptography object: pass the hex string, get a signed bundle back.
+    """
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["record", str(trace_path), "--signing-key-hex", _hex_key()],
+    )
+    assert result.exit_code == 0, f"Exit code {result.exit_code}: {result.output}"
+    assert "Signed bundle with key_id" in result.output
+    assert "Signature:" in result.output
+
+
+def test_record_command_rejects_invalid_hex_key(tmp_path: Path) -> None:
+    """record --signing-key-hex with non-hex input exits non-zero."""
+    trace_path = tmp_path / "trace.pkl"
+    _write_sample_trace(trace_path)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["record", str(trace_path), "--signing-key-hex", "not-valid-hex-zz"],
+    )
+    assert result.exit_code != 0
+    assert "hex" in result.output.lower()
 
 
 def test_agent_query_trace_tensor_command(tmp_path: Path) -> None:
