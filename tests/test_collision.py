@@ -434,6 +434,40 @@ class TestReplayRankCollisionReport:
         # Bundle order preserved across the interleaved foreign-rank event.
         assert [e.sequence_id for e in passed] == [1, 2, 3]
 
+    def test_replay_rank_populates_collision_report_even_when_rank_has_no_events(
+        self,
+    ) -> None:
+        # The bullet populates collision_report via check_collisions whenever
+        # a detector is configured — it must NOT short-circuit to None just
+        # because the replayed rank happens to contribute zero events. This
+        # locks in the "instead of leaving it None" contract for the empty-
+        # timeline case and guards against a future ``if events:`` guard
+        # silently regressing it. Backend-agnostic: the stub detector records
+        # the timeline it receives and returns its preset report regardless
+        # of input.
+        detector = _RecordingDetector()
+        replayer = EpochReplayer(ProvGraph(), detector=detector)
+        # Bundle holds only a foreign-rank action; the replayed rank (2)
+        # contributes no events at all.
+        foreign_event = AEPRecord(
+            action_id="rank-9-step-1",
+            rank=9,
+            step=1,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        bundle = EpochEvidenceBundle(epoch=4, actions=[foreign_event])
+
+        result = replayer.replay_rank(bundle, rank=2, entity_id="missing-entity")
+
+        # check_collisions was still invoked on the detector path...
+        assert detector.timelines is not None
+        assert list(detector.timelines) == [2]
+        # ...with an empty timeline for the replayed rank (not skipped)...
+        assert detector.timelines[2] == []
+        # ...so collision_report is the detector's report, not None.
+        assert result.collision_report is detector.report
+
 
 # ---------------------------------------------------------------------------
 # Import acceptance criteria
