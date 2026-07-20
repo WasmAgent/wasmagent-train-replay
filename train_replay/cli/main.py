@@ -111,8 +111,26 @@ def trace(entity_id: str, dump_path: str) -> None:
 @click.argument("dump_path", type=click.Path(exists=True))
 @click.option("--run-id", default="dev-run", show_default=True)
 @click.option("--epoch", default=0, type=int, show_default=True)
+@click.option(
+    "--signing-key-hex",
+    default=None,
+    help="Raw Ed25519 private key as 64-char hex; signs the recorded bundle.",
+)
+@click.option(
+    "--signing-key-id",
+    default="dev-key",
+    show_default=True,
+    help="key_id stamped into the bundle signature envelope.",
+)
 @click.pass_context
-def record(ctx: click.Context, dump_path: str, run_id: str, epoch: int) -> None:
+def record(
+    ctx: click.Context,
+    dump_path: str,
+    run_id: str,
+    epoch: int,
+    signing_key_hex: str | None,
+    signing_key_id: str,
+) -> None:
     """Record AEP evidence for all collectives in a Flight Recorder dump."""
     safe_mode: SafeMode = ctx.obj["safe_mode"]
     try:
@@ -122,14 +140,28 @@ def record(ctx: click.Context, dump_path: str, run_id: str, epoch: int) -> None:
 
     from train_replay.collector.flight_recorder import load_flight_recorder
     from train_replay.recording.recorder import EpochRecorder
+    from train_replay.signing.signer import BundleSigner, load_private_key_hex
 
     events = load_flight_recorder(Path(dump_path))
     recorder = EpochRecorder(run_id=run_id, epoch=epoch)
     for evt in events:
         recorder.record_collective(evt)
     bundle = recorder.bundle()
+
+    if signing_key_hex is not None:
+        # ``load_private_key_hex`` keeps cryptography object construction out of
+        # callers (and the CLI): a raw hex string becomes a signing key here.
+        try:
+            private_key = load_private_key_hex(signing_key_hex)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+        BundleSigner(private_key, signing_key_id).sign(bundle)
+        console.print(f"Signed bundle with key_id [cyan]{signing_key_id}[/cyan]")
+
     console.print(f"Recorded [cyan]{len(bundle.actions)}[/cyan] actions")
     console.print(f"Bundle digest: [bold]{bundle.digest()}[/bold]")
+    if bundle.signature is not None:
+        console.print(f"Signature: [bold]{bundle.signature['sig']}[/bold]")
 
 
 @cli.command()
