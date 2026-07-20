@@ -106,3 +106,45 @@ def test_epoch_recorder_record_with_escalation_accepts_typed_signal():
     assert record.collective_type == "all_reduce"
     assert record.recording_mode == RecordingMode.FULL
     assert record.timestamp_ns == 2000
+
+
+def test_record_with_escalation_threads_signal_past_baseline_read():
+    """The bullet's contract is that record_with_escalation *passes the signal
+    through to compile_recording_policy()*. A 'recv' collective is a READ
+    side-effect, so record_collective records it as VALIDATION; the same event
+    passed through record_with_escalation must come back as FULL. This contrast
+    proves the escalation signal (not the side-effect class) drove the policy,
+    and that it actually reached compile_recording_policy."""
+    event = CollectiveEvent(
+        rank=7,
+        process_group="default",
+        collective_type="recv",
+        src_rank=None,
+        dst_rank=None,
+        tensor_size=512,
+        enqueue_time_ns=10_000,
+        start_time_ns=20_000,
+        end_time_ns=30_000,
+        sequence_id=11,
+    )
+
+    # Baseline: without escalation, a recv is a READ -> VALIDATION.
+    baseline = EpochRecorder(run_id="run-1", epoch=3)
+    baseline.record_collective(event)
+    [baseline_record] = baseline.bundle().actions
+    assert baseline_record.recording_mode == RecordingMode.VALIDATION
+
+    # With the signal threaded through, the same READ event becomes FULL.
+    recorder = EpochRecorder(run_id="run-1", epoch=3)
+    signal = EscalationSignal(
+        source="nccl-inspector", severity=0.9, metric_name="nccl_anomaly_score"
+    )
+    recorder.record_with_escalation(event, signal)
+
+    [record] = recorder.bundle().actions
+    assert record.action_id == "r7:seq11"
+    assert record.rank == 7
+    assert record.step == 11
+    assert record.collective_type == "recv"
+    assert record.recording_mode == RecordingMode.FULL
+    assert record.timestamp_ns == 20_000
