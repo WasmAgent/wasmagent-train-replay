@@ -334,6 +334,53 @@ class TestReplayRankCollisionReport:
         assert replayed_event.collective_type == rank_event.collective_type
         assert replayed_event.sequence_id == rank_event.step
 
+    def test_replay_rank_leaves_collision_report_none_without_detector(self) -> None:
+        # No CollisionDetector configured: replay_rank must not raise and must
+        # leave collision_report as None — the fallback the bullet contrasts
+        # against ("instead of leaving it None"). The remaining ReplayResult
+        # fields still populate from the bundle.
+        replayer = EpochReplayer(ProvGraph())  # detector omitted
+        rank_event = AEPRecord(
+            action_id="rank-1-step-3",
+            rank=1,
+            step=3,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        bundle = EpochEvidenceBundle(epoch=5, actions=[rank_event])
+
+        result = replayer.replay_rank(bundle, rank=1, entity_id="missing-entity")
+
+        assert result.collision_report is None
+        assert result.epoch == 5
+        assert result.rank == 1
+        assert rank_event in result.suspicious_actions
+        assert result.causal_ancestors == []
+
+    def test_replay_rank_populates_collision_report_with_real_detector(self) -> None:
+        # End-to-end: a real (non-stub) detector wired through replay_rank
+        # populates collision_report with a genuine CollisionReport via the
+        # check_collisions({rank: events}) call the bullet requires. Per the
+        # bullet, replay_rank passes only the replayed rank's timeline; a
+        # single-rank NCCL timeline has no peer to mismatch against, so
+        # has_collisions is False but the report is a real object (not None).
+        detector = NcclCollisionDetector()
+        replayer = EpochReplayer(ProvGraph(), detector=detector)
+        rank_event = AEPRecord(
+            action_id="rank-0-step-1",
+            rank=0,
+            step=1,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        bundle = EpochEvidenceBundle(epoch=3, actions=[rank_event])
+
+        result = replayer.replay_rank(bundle, rank=0, entity_id="missing-entity")
+
+        assert result.collision_report is not None
+        assert isinstance(result.collision_report, CollisionReport)
+        assert not result.collision_report.has_collisions
+
 
 # ---------------------------------------------------------------------------
 # Import acceptance criteria
