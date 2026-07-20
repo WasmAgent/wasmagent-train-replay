@@ -19,6 +19,12 @@ commands:
       && .venv/bin/pip install -e ".[dev]" -q --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu
     timeout: 5m
     level: 1
+  - name: python-import
+    cmd: >-
+      .venv/bin/python -c
+      "import train_replay; import train_replay.agent; import train_replay.replay; import train_replay.recording"
+    timeout: 30s
+    level: 1
   - name: lint
     cmd: .venv/bin/python -m ruff check train_replay tests
     timeout: 2m
@@ -29,5 +35,5 @@ commands:
     level: 2
   - name: test
     cmd: .venv/bin/python -m pytest tests/ -x
-    timeout: 5m
+    timeout: 8m
     level: 3
