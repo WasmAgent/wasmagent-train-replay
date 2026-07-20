@@ -381,6 +381,59 @@ class TestReplayRankCollisionReport:
         assert isinstance(result.collision_report, CollisionReport)
         assert not result.collision_report.has_collisions
 
+    def test_replay_rank_passes_all_events_for_rank_in_order(self) -> None:
+        # The bullet's "{rank: events}" population is plural: a rank with
+        # several collectives must contribute its whole timeline to
+        # check_collisions, in bundle order, with other ranks' interleaved
+        # events filtered out. The single-event case above can't distinguish
+        # "convert every matching record" from "convert the first one only".
+        detector = _RecordingDetector()
+        replayer = EpochReplayer(ProvGraph(), detector=detector)
+        rank_events = [
+            AEPRecord(
+                action_id=f"rank-5-step-{step}",
+                rank=5,
+                step=step,
+                collective_type="all_reduce",
+                recording_mode=RecordingMode.FULL,
+                timestamp_ns=step * 1000,
+            )
+            for step in (1, 2, 3)
+        ]
+        other_rank_event = AEPRecord(
+            action_id="rank-6-step-1",
+            rank=6,
+            step=1,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        # Interleave the foreign-rank event to confirm rank filtering, not
+        # position-based selection.
+        bundle = EpochEvidenceBundle(
+            epoch=7,
+            actions=[rank_events[0], other_rank_event, rank_events[1], rank_events[2]],
+        )
+
+        result = replayer.replay_rank(bundle, rank=5, entity_id="missing-entity")
+
+        assert result.collision_report is detector.report
+        assert list(detector.timelines) == [5]
+        passed = detector.timelines[5]
+        assert len(passed) == 3
+        for original, converted in zip(rank_events, passed):
+            assert isinstance(converted, CollectiveEvent)
+            assert converted.rank == 5
+            assert converted.sequence_id == original.step
+            assert converted.collective_type == original.collective_type
+            # _record_to_collective_event maps timestamp_ns onto the three
+            # CollectiveEvent time fields — a timestamp-sensitive backend
+            # (Gloo) relies on this so collision_report is meaningful.
+            assert converted.enqueue_time_ns == original.timestamp_ns
+            assert converted.start_time_ns == original.timestamp_ns
+            assert converted.end_time_ns == original.timestamp_ns
+        # Bundle order preserved across the interleaved foreign-rank event.
+        assert [e.sequence_id for e in passed] == [1, 2, 3]
+
 
 # ---------------------------------------------------------------------------
 # Import acceptance criteria
