@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-21 16:22 UTC by patrol_
+_Last updated: 2026-07-21 16:30 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-21 16:22 UTC by patrol_
 
 ## Waiting for Human
 
+- #235: [milestone Milestone 4 ] Add `train_replay/agent/__init__.py` and `train_replay/agent/schema.py`: `TypedD...
 - #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 
 ---
