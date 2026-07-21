@@ -16,7 +16,7 @@ class TraceTensorInput(TypedDict):
 class TraceTensorOutput(TypedDict):
     """Output payload returned by the trace_tensor tool."""
 
-    tool: AgentToolName
+    tool: Literal["trace_tensor"]
     entity_id: str
     causal_ancestors: list[str]
 
