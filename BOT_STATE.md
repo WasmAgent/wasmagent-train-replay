@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-21 03:05 UTC by patrol_
+_Last updated: 2026-07-21 03:12 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 1 |
+| Pending | 0 |
 | Active (running/reviewing) | 1 |
-| Blocked | 0 |
+| Blocked | 1 |
 | Completed/Merged (all time) | 553 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,7 @@ _Last updated: 2026-07-21 03:05 UTC by patrol_
 
 ## Waiting for Human
 
+- #213: [milestone Milestone 1 ] Fix `replay_rank()` in `train_replay/replay/replayer.py`: populate `ReplayResult...
 - #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 
 ---
