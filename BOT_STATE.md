@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-21 00:09 UTC by patrol_
+_Last updated: 2026-07-21 01:13 UTC by patrol_
 
 ## Queue
 
@@ -8,18 +8,18 @@ _Last updated: 2026-07-21 00:09 UTC by patrol_
 |---|---|
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
-| Blocked | 0 |
-| Completed/Merged (all time) | 541 |
+| Blocked | 1 |
+| Completed/Merged (all time) | 546 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
-| #196 | [milestone Milestone 1 ] Fix `replay_rank()` in `train_re... | merged/merged | 2026-07-20 |
-| #198 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-20 |
-| #197 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-20 |
-| #199 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-20 |
-| #194 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/auto_closed_resolved | 2026-07-20 |
+| #201 | [milestone Milestone 1 ] Fix `replay_rank()` in `train_re... | merged/auto_closed_resolved | 2026-07-21 |
+| #202 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-21 |
+| #203 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-21 |
+| #204 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-21 |
+| #206 | chore: add level:4 strict gate probes to verify.yml (mypy... | merged/merged | 2026-07-21 |
 
 ## Waiting for Human
 
