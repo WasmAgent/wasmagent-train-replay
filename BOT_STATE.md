@@ -1,29 +1,28 @@
 # Bot State
 
-_Last updated: 2026-07-21 16:48 UTC by patrol_
+_Last updated: 2026-07-21 16:55 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
 | Pending | 0 |
-| Active (running/reviewing) | 1 |
+| Active (running/reviewing) | 0 |
 | Blocked | 4 |
-| Completed/Merged (all time) | 571 |
+| Completed/Merged (all time) | 572 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #235 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/auto_closed_resolved | 2026-07-21 |
 | #231 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-21 |
 | #230 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-21 |
 | #224 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/auto_closed_resolved | 2026-07-21 |
 | #229 | [milestone Milestone 1 ] Fix `replay_rank()` in `train_re... | merged/auto_closed_resolved | 2026-07-21 |
-| #228 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-21 |
 
 ## Waiting for Human
 
-- #235: [milestone Milestone 4 ] Add `train_replay/agent/__init__.py` and `train_replay/agent/schema.py`: `TypedD...
 - #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 
 ---
