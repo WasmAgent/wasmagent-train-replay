@@ -37,3 +37,7 @@ commands:
     cmd: .venv/bin/python -m pytest tests/ -x
     timeout: 8m
     level: 3
+  - name: mypy-strict
+    cmd: .venv/bin/python -m mypy train_replay --strict --ignore-missing-imports 2>&1 | tail -20
+    timeout: 3m
+    level: 4
