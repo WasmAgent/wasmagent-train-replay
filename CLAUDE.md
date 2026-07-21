@@ -148,38 +148,15 @@ and its test to understand the existing contract before modifying.
 
 ## Roadmap
 
-### Phase 2: Complete CLI and test coverage
-- [x] #1 test coverage for all modules
-- [x] #2 train-replay record CLI command
-- [x] #3 CONTRIBUTING.md
-- [x] #5 fix causal graph traversal
-- [x] #8 node importance scoring
-- [x] #14 docs: create docs/ directory with architecture, protocol, integration, and CLI reference
-- [ ] #35 feat: replay CLI subcommand (PRs #37, #41 open)
-- [ ] #11 test: EvidenceProfilerHook + Ed25519 signing tests
-- [ ] #12 test: multi-rank integration test
+See `docs/15-milestones.md` — that file is the single authoritative milestone list.
+Patrol reads `docs/15-milestones.md` directly for bullet-to-issue conversion.
 
-### Phase 3: Real PyTorch integration
-- [ ] feat: profiler_hook integration with torch.autograd register_hook
-- [ ] feat: multi-dump ingestion (list of .pkl files, one per rank)
-- [ ] feat: cli ingest-multi for cross-rank dumps with automatic rank detection
-
-### Phase 4: Differentiation — tamper-evident evidence + framework-agnostic coverage
-- [ ] #34 feat: SAFE_MODE circuit-breaker — profiler overhead guard, auto-disable on latency spike (PR #36 open)
-- [ ] feat: framework-agnostic collector interface (Gloo/MTIA backend adapters)
-- [ ] feat: EpochEvidenceBundle serialization to JSON/CBOR for persistence and external audit
-- [ ] feat: replay --output flag writes causal report to file
-- [ ] docs: auditor guide — how to verify an EpochEvidenceBundle signature and chain of custody
-
-### Phase 5: Agent-automated root-cause reasoning
-- [ ] #44 feat: causal ancestor traversal → structured hypothesis output (JSON schema)
-- [ ] feat: agent reasoning layer — LLM-callable tool wrapping find_root_cause()
-- [ ] feat: integration with NCCL Inspector metrics as anomaly trigger signal
-- [ ] perf: streaming parser for large Flight Recorder dumps (>1GB)
+Do not maintain a parallel roadmap here; any inline bullets here would cause
+duplicate issues alongside the milestone-status pipeline.
 
 ## How patrol sweep discovers new issues
-The patrol sweep reads this CLAUDE.md roadmap section.
+The patrol sweep reads `docs/15-milestones.md` for this project.
 When an issue is closed and its checkbox can be ticked, patrol will:
-1. Tick the checkbox in this file
-2. Open the next unchecked issue in the roadmap
+1. Tick the checkbox in `docs/15-milestones.md`
+2. Open the next unchecked bullet as a new issue
 This creates a self-driving development loop.
