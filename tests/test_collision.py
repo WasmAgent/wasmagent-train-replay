@@ -12,7 +12,7 @@ from train_replay.graph.collision import (
     NcclCollisionDetector,
     detect_collisions,
 )
-from train_replay.graph.prov_graph import ProvGraph
+from train_replay.graph.prov_graph import ProvActivity, ProvEntity, ProvGraph
 from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
 from train_replay.recording.modes import RecordingMode
 from train_replay.replay.replayer import EpochReplayer
@@ -467,6 +467,69 @@ class TestReplayRankCollisionReport:
         assert detector.timelines[2] == []
         # ...so collision_report is the detector's report, not None.
         assert result.collision_report is detector.report
+
+    def test_replay_rank_populates_collision_report_independently_of_causal_ancestors(
+        self,
+    ) -> None:
+        # The bullet populates ``collision_report`` via ``check_collisions`` — a
+        # computation orthogonal to ``find_root_cause``. Every other test in
+        # this class drives an *empty* ``ProvGraph`` with ``entity_id`` set to a
+        # missing node, so ``causal_ancestors`` is always ``[]``. None can catch
+        # a regression that gates collision detection on the entity resolving
+        # (e.g. a future ``if ancestors:`` / ``if not ancestors:`` guard before
+        # the ``check_collisions`` call, which would silently re-break the
+        # bullet's "instead of leaving it None" contract on the resolved-entity
+        # path). Build a real ancestor chain, confirm BOTH populate together,
+        # locking the independence.
+        graph = ProvGraph()
+        graph.add_activity(
+            ProvActivity(
+                id="act:seed",
+                label="init",
+                rank=0,
+                process_group="default",
+                timestamp_ns=0,
+                collective_type="all_reduce",
+            )
+        )
+        graph.add_activity(
+            ProvActivity(
+                id="act:gen",
+                label="generate",
+                rank=0,
+                process_group="default",
+                timestamp_ns=10,
+                collective_type="all_reduce",
+            )
+        )
+        graph.add_entity(ProvEntity(id="tensor:0:1:out", digest=None, rank=0, step=1))
+        # was_generated_by(entity, activity) records activity -> entity edges,
+        # so act:seed -> act:gen -> tensor:0:1:out is the ancestor chain.
+        graph.was_generated_by("act:gen", "act:seed")
+        graph.was_generated_by("tensor:0:1:out", "act:gen")
+
+        detector = _RecordingDetector()
+        replayer = EpochReplayer(graph, detector=detector)
+        rank_event = AEPRecord(
+            action_id="rank-0-step-1",
+            rank=0,
+            step=1,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        bundle = EpochEvidenceBundle(epoch=2, actions=[rank_event])
+
+        result = replayer.replay_rank(bundle, rank=0, entity_id="tensor:0:1:out")
+
+        # The entity resolved to a non-empty ancestor chain — the path no other
+        # test in this class exercises (they all pass a missing entity_id).
+        assert result.causal_ancestors == ["act:gen", "act:seed"]
+        # ...yet collision_report is still populated via check_collisions with
+        # the replayed rank's timeline, proving the two outputs are computed
+        # independently rather than the collision path being ancestor-gated.
+        assert result.collision_report is detector.report
+        assert detector.timelines is not None
+        assert list(detector.timelines) == [0]
 
 
 # ---------------------------------------------------------------------------
