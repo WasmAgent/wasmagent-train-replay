@@ -1,5 +1,13 @@
 # wasmagent-train-replay
 
+| | |
+|---|---|
+| **Status** | Experimental |
+| **Contract stability** | Evolving |
+| **Recommended for** | Distributed training audit; tamper-evident epoch evidence |
+| **Not recommended for** | General PyTorch profiling; real-time monitoring |
+
+
 > Causal evidence layer for distributed GPU training — cross-rank PROV-DM provenance graph and deterministic replay
 
 Reads PyTorch Flight Recorder dumps and profiler hooks, builds a cross-rank causal graph,
