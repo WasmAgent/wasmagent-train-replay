@@ -64,7 +64,11 @@ class PrometheusAnomalySource:
 
     @staticmethod
     def _extract_value(payload: dict[str, Any]) -> float | None:
-        result = payload.get("data", {}).get("result", [])
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            return None
+
+        result = data.get("result", [])
         if not isinstance(result, list) or not result:
             return None
 
