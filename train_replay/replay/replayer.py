@@ -53,7 +53,7 @@ class EpochReplayer:
             return full_mode_actions
 
         # Build per-rank timelines from the bundle and run the detector.
-        timelines: dict[int, list] = {}
+        timelines: dict[int, list[CollectiveEvent]] = {}
         for action in bundle.actions:
             timelines.setdefault(action.rank, []).append(
                 self._record_to_collective_event(action)
