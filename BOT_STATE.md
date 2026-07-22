@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-22 19:13 UTC by patrol_
+_Last updated: 2026-07-22 19:15 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 3 |
+| Pending | 4 |
 | Active (running/reviewing) | 1 |
-| Blocked | 3 |
+| Blocked | 2 |
 | Completed/Merged (all time) | 631 |
 
 ## Recent Activity (last 5)
@@ -24,6 +24,7 @@ _Last updated: 2026-07-22 19:13 UTC by patrol_
 ## Waiting for Human
 
 - #302: Fix WasmAgent/wasmagent-train-replay#294 ([milestone Milestone 5 ] Add `tests/test_anomaly.py`: inject synthetic timing 
+- #300: [milestone Milestone 5 ] Add `EpochReplayer.anomaly_scan()` method in `train_replay/replay/replayer.py` t...
 - #295: [milestone Milestone 5 ] Add `docs/anomaly-guide.md`: explain profile creation from normal training runs,...
 - #293: [milestone Milestone 5 ] Add `train-replay anomaly` CLI subcommand in `train_replay/cli/main.py`: `train-...
 - #288: [milestone Milestone 5 ] Add `train_replay/anomaly/detector.py`: `AnomalyDetector` abstract base class wi...
