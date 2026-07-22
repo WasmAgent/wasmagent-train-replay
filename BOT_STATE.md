@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-21 23:57 UTC by patrol_
+_Last updated: 2026-07-22 00:04 UTC by patrol_
 
 ## Queue
 
@@ -9,17 +9,17 @@ _Last updated: 2026-07-21 23:57 UTC by patrol_
 | Pending | 1 |
 | Active (running/reviewing) | 1 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 584 |
+| Completed/Merged (all time) | 585 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #234 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/maintenance_done | 2026-07-22 |
 | #241 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/merged | 2026-07-21 |
 | #232 | [milestone Milestone 1 ] Fix `replay_rank()` in `train_re... | merged/merged | 2026-07-21 |
 | #238 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/merged | 2026-07-21 |
 | #234 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | completed/maintenance_done | 2026-07-21 |
-| #233 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-21 |
 
 ## Waiting for Human
 
