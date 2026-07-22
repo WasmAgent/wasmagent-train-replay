@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-22 17:45 UTC by patrol_
+_Last updated: 2026-07-22 17:48 UTC by patrol_
 
 ## Queue
 
@@ -25,6 +25,7 @@ _Last updated: 2026-07-22 17:45 UTC by patrol_
 
 - #296: [milestone Milestone 5 ] Update `docs/architecture.md`: add \
 - #295: [milestone Milestone 5 ] Add `docs/anomaly-guide.md`: explain profile creation from normal training runs,...
+- #294: [milestone Milestone 5 ] Add `tests/test_anomaly.py`: inject synthetic timing anomalies (delayed all-redu...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
