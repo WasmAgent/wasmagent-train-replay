@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from ..anomaly import AnomalySignal
+from ..anomaly.profile import TrainingProfile
 from ..collector.flight_recorder import CollectiveEvent
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import AEPRecord, EpochEvidenceBundle
@@ -12,6 +14,37 @@ from ..recording.modes import RecordingMode
 
 if TYPE_CHECKING:
     from ..graph.collision import CollisionDetector, CollisionReport
+
+
+@runtime_checkable
+class AnomalyDetector(Protocol):
+    """Protocol for anomaly detectors used by :meth:`EpochReplayer.anomaly_scan`.
+
+    The concrete ``StatisticalAnomalyDetector`` (``train_replay.anomaly.detector``)
+    satisfies this protocol. Any detector that implements ``detect`` with the
+    matching signature can be passed to ``EpochReplayer``.
+    """
+
+    def detect(
+        self,
+        events: list[CollectiveEvent],
+        profile: TrainingProfile,
+    ) -> list[AnomalySignal]: ...
+
+
+class _NoAnomalyDetector:
+    """Sentinel detector that always returns an empty list.
+
+    Used when no real detector is configured so that ``anomaly_scan()``
+    returns ``[]`` instead of raising.
+    """
+
+    def detect(
+        self,
+        events: list[CollectiveEvent],
+        profile: TrainingProfile,
+    ) -> list[AnomalySignal]:
+        return []
 
 
 @dataclass
@@ -30,9 +63,11 @@ class EpochReplayer:
         self,
         graph: ProvGraph,
         detector: CollisionDetector | None = None,
+        anomaly_detector: AnomalyDetector | None = None,
     ) -> None:
         self._graph = graph
         self._detector = detector
+        self._anomaly_detector = anomaly_detector or _NoAnomalyDetector()
 
     def find_root_cause(self, entity_id: str) -> list[str]:
         """Return activity IDs that causally contributed to entity_id."""
@@ -93,6 +128,27 @@ class EpochReplayer:
         # from the same module we TYPE_CHECK-guard above.
         from ..graph.collision import CollisionReport as _  # noqa: F401 — ensure importable
         return self._detector.detect(timelines)
+
+    def anomaly_scan(
+        self,
+        events: list[CollectiveEvent],
+        profile: TrainingProfile,
+    ) -> list[AnomalySignal]:
+        """Run the anomaly detector over an event timeline and return ranked anomalies.
+
+        Delegates to the configured :class:`AnomalyDetector` (or a no-op
+        sentinel when none was provided).  Results are sorted by descending
+        ``score`` so the most anomalous entries appear first.
+
+        Args:
+            events: Collective events from the run to scan.
+            profile: Baseline statistics from a known-good training run.
+
+        Returns:
+            Ranked list of :class:`AnomalySignal` records, highest score first.
+        """
+        signals = self._anomaly_detector.detect(events, profile)
+        return sorted(signals, key=lambda s: s.score, reverse=True)
 
     def replay_rank(
         self,
