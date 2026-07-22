@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-22 13:58 UTC by patrol_
+_Last updated: 2026-07-22 14:14 UTC by patrol_
 
 ## Queue
 
@@ -20,10 +20,6 @@ _Last updated: 2026-07-22 13:58 UTC by patrol_
 | #280 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-22 |
 | #277 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-22 |
 | #276 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-22 |
-
-## Waiting for Human
-
-- #98: [milestone Milestone 1 ] Fix `train_replay/replay/replayer.py` `suspicious_actions()`: when `self._detect...
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
