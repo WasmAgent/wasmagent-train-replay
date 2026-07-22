@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-22 21:06 UTC by patrol_
+_Last updated: 2026-07-22 21:16 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
 | Pending | 0 |
-| Active (running/reviewing) | 0 |
-| Blocked | 6 |
-| Completed/Merged (all time) | 631 |
+| Active (running/reviewing) | 1 |
+| Blocked | 5 |
+| Completed/Merged (all time) | 632 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
 | #289 | [milestone Milestone 5 ] Add `train_replay/anomaly/profil... | merged/auto_closed_resolved | 2026-07-22 |
 | #294 | [milestone Milestone 5 ] Add `tests/test_anomaly.py`: inj... | completed/complexity_gate_split | 2026-07-22 |
 | #296 | [milestone Milestone 5 ] Update `docs/architecture.md`: a... | merged/merged | 2026-07-22 |
 | #291 | [milestone Milestone 5 ] Add `EpochReplayer.anomaly_scan(... | completed/complexity_gate_split | 2026-07-22 |
-| #286 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-22 |
 
 ## Waiting for Human
 
