@@ -537,6 +537,63 @@ class TestReplayRankCollisionReport:
 # ---------------------------------------------------------------------------
 
 
+
+    def test_suspicious_actions_with_detector_no_collision(self) -> None:
+        # When detector finds no collisions, only FULL-mode actions are returned.
+        detector = NcclCollisionDetector()
+        replayer = EpochReplayer(ProvGraph(), detector=detector)
+        action = AEPRecord(
+            action_id="a1",
+            rank=0,
+            step=1,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+        )
+        bundle = EpochEvidenceBundle(epoch=1, actions=[action])
+
+        result = replayer.suspicious_actions(bundle)
+
+        assert result == [action]
+        assert all(r.collective_type != "desync" for r in result)
+
+    def test_suspicious_actions_with_detector_emits_desync_records(self) -> None:
+        # When detector finds a type mismatch, a synthetic desync AEPRecord
+        # with collective_type="desync" is appended to the returned list.
+        detector = NcclCollisionDetector()
+        replayer = EpochReplayer(ProvGraph(), detector=detector)
+
+        # Two ranks with mismatched collective types at seq_id 1 => collision.
+        rank0_action = AEPRecord(
+            action_id="r0-s1",
+            rank=0,
+            step=1,
+            collective_type="all_reduce",
+            recording_mode=RecordingMode.FULL,
+            timestamp_ns=0,
+        )
+        rank1_action = AEPRecord(
+            action_id="r1-s1",
+            rank=1,
+            step=1,
+            collective_type="all_gather",  # mismatch -> collision
+            recording_mode=RecordingMode.FULL,
+            timestamp_ns=0,
+        )
+        bundle = EpochEvidenceBundle(epoch=2, actions=[rank0_action, rank1_action])
+
+        result = replayer.suspicious_actions(bundle)
+
+        full_actions = [r for r in result if r.collective_type != "desync"]
+        desync_records = [r for r in result if r.collective_type == "desync"]
+
+        assert rank0_action in full_actions
+        assert rank1_action in full_actions
+        assert len(desync_records) >= 1
+        desync = desync_records[0]
+        assert desync.collective_type == "desync"
+        assert desync.recording_mode == RecordingMode.FULL
+        assert desync.step == 1
+
 class TestImportAcceptanceCriteria:
     def test_import_nccl(self) -> None:
         from train_replay.graph.collision import NcclCollisionDetector as NCC

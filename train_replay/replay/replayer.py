@@ -52,7 +52,29 @@ class EpochReplayer:
         if self._detector is None:
             return full_mode_actions
 
-        return full_mode_actions
+        # Build per-rank timelines from the bundle and run the detector.
+        timelines: dict[int, list[CollectiveEvent]] = {}
+        for action in bundle.actions:
+            timelines.setdefault(action.rank, []).append(
+                self._record_to_collective_event(action)
+            )
+        report = self._detector.detect(timelines)
+
+        # Convert each detected collision into a synthetic AEPRecord so
+        # callers get a uniform list[AEPRecord] regardless of backend.
+        desync_records = [
+            AEPRecord(
+                action_id=f"desync-r{c.rank_a}-r{c.rank_b}-s{c.step}",
+                rank=c.rank_a,
+                step=c.step,
+                collective_type="desync",
+                recording_mode=RecordingMode.FULL,
+                delta_stats={"rank_b": float(c.rank_b)},
+                causal_chain_id=c.detail,
+            )
+            for c in report.collisions
+        ]
+        return full_mode_actions + desync_records
 
     def check_collisions(
         self,
