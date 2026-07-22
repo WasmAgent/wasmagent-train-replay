@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-22 10:56 UTC by patrol_
+_Last updated: 2026-07-22 12:26 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 1 |
-| Active (running/reviewing) | 2 |
+| Pending | 0 |
+| Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 613 |
+| Completed/Merged (all time) | 616 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #272 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-22 |
+| #274 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-22 |
+| #273 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-22 |
 | #271 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-22 |
 | #270 | [milestone Milestone 3 ] Add EpochRecorder.record_with_es... | merged/auto_closed_resolved | 2026-07-22 |
-| #269 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-22 |
-| #268 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-22 |
-| #266 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-22 |
 
 ## Waiting for Human
 
