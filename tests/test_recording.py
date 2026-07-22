@@ -3,6 +3,7 @@
 from train_replay.collector.flight_recorder import CollectiveEvent
 from train_replay.recording.escalation import EscalationSignal
 from train_replay.recording.modes import (
+    AnomalySignal,
     RecordingMode,
     RiskContext,
     SideEffectClass,
@@ -148,3 +149,55 @@ def test_record_with_escalation_threads_signal_past_baseline_read():
     assert record.collective_type == "recv"
     assert record.recording_mode == RecordingMode.FULL
     assert record.timestamp_ns == 20_000
+
+
+def test_anomaly_signal_exceeding_threshold_yields_full():
+    """An AnomalySignal whose score exceeds its threshold forces FULL mode."""
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    signal = AnomalySignal(score=0.95, threshold=0.8, description="z-score outlier")
+    policy = compile_recording_policy(ctx, anomaly_signal=signal)
+
+    assert policy.mode == RecordingMode.FULL
+    assert policy.reason == "statistical anomaly detected"
+
+
+def test_anomaly_signal_below_threshold_does_not_force_full():
+    """An AnomalySignal whose score does NOT exceed threshold falls through
+    to baseline logic (READ -> VALIDATION in this case)."""
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    signal = AnomalySignal(score=0.3, threshold=0.8)
+    policy = compile_recording_policy(ctx, anomaly_signal=signal)
+
+    assert policy.mode == RecordingMode.VALIDATION
+
+
+def test_anomaly_signal_none_is_noop():
+    """Passing anomaly_signal=None (the default) should behave identically to
+    not passing it at all."""
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    policy_default = compile_recording_policy(ctx)
+    policy_explicit = compile_recording_policy(ctx, anomaly_signal=None)
+
+    assert policy_default.mode == policy_explicit.mode
+    assert policy_default.reason == policy_explicit.reason
+
+
+def test_anomaly_signal_at_exact_threshold_does_not_trigger():
+    """Score exactly equal to threshold should NOT trigger FULL (only >)."""
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    signal = AnomalySignal(score=0.8, threshold=0.8)
+    policy = compile_recording_policy(ctx, anomaly_signal=signal)
+
+    assert policy.mode == RecordingMode.VALIDATION
+
+
+def test_escalation_priority_over_anomaly_signal():
+    """EscalationSignal should take priority over AnomalySignal when both are
+    provided (escalation is checked first)."""
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    escalation = EscalationSignal(source="nccl-inspector", severity=1.0, metric_name="nccl")
+    anomaly = AnomalySignal(score=0.99, threshold=0.1)
+    policy = compile_recording_policy(ctx, escalation=escalation, anomaly_signal=anomaly)
+
+    assert policy.mode == RecordingMode.FULL
+    assert policy.reason == "external escalation signal"

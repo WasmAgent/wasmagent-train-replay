@@ -8,6 +8,7 @@ from enum import Enum
 from train_replay.recording.escalation import EscalationSignal
 
 __all__ = [
+    "AnomalySignal",
     "EscalationSignal",
     "RecordingMode",
     "RecordingPolicy",
@@ -45,12 +46,25 @@ class RecordingPolicy:
     reason: str
 
 
+@dataclass(frozen=True)
+class AnomalySignal:
+    """Statistical anomaly detected by an AnomalyDetector implementation."""
+
+    score: float
+    threshold: float = 0.0
+    description: str = ""
+
+
 def compile_recording_policy(
-    ctx: RiskContext, escalation: EscalationSignal | None = None
+    ctx: RiskContext,
+    escalation: EscalationSignal | None = None,
+    anomaly_signal: AnomalySignal | None = None,
 ) -> RecordingPolicy:
     """Port of capability-compiler's compileToRecordingPolicy. Priority order matches TS."""
     if escalation is not None:
         return RecordingPolicy(RecordingMode.FULL, "external escalation signal")
+    if anomaly_signal is not None and anomaly_signal.score > anomaly_signal.threshold:
+        return RecordingPolicy(RecordingMode.FULL, "statistical anomaly detected")
     if ctx.was_vetted:
         return RecordingPolicy(RecordingMode.FULL, "tool flagged by vetting")
     if ctx.has_consent_anomaly:
