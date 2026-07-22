@@ -1,15 +1,15 @@
 # Bot State
 
-_Last updated: 2026-07-22 22:12 UTC by patrol_
+_Last updated: 2026-07-22 22:17 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 1 |
-| Active (running/reviewing) | 1 |
-| Blocked | 5 |
-| Completed/Merged (all time) | 635 |
+| Pending | 0 |
+| Active (running/reviewing) | 0 |
+| Blocked | 6 |
+| Completed/Merged (all time) | 636 |
 
 ## Recent Activity (last 5)
 
@@ -19,7 +19,7 @@ _Last updated: 2026-07-22 22:12 UTC by patrol_
 | #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
 | #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
 | #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
-| #289 | [milestone Milestone 5 ] Add `train_replay/anomaly/profil... | merged/auto_closed_resolved | 2026-07-22 |
+| #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
 
 ## Waiting for Human
 
