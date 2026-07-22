@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-22 21:52 UTC by patrol_
+_Last updated: 2026-07-22 21:56 UTC by patrol_
 
 ## Queue
 
@@ -9,7 +9,7 @@ _Last updated: 2026-07-22 21:52 UTC by patrol_
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 6 |
-| Completed/Merged (all time) | 634 |
+| Completed/Merged (all time) | 635 |
 
 ## Recent Activity (last 5)
 
@@ -18,8 +18,8 @@ _Last updated: 2026-07-22 21:52 UTC by patrol_
 | #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
 | #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
 | #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
+| #290 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/maintenance_done | 2026-07-22 |
 | #289 | [milestone Milestone 5 ] Add `train_replay/anomaly/profil... | merged/auto_closed_resolved | 2026-07-22 |
-| #294 | [milestone Milestone 5 ] Add `tests/test_anomaly.py`: inj... | completed/complexity_gate_split | 2026-07-22 |
 
 ## Waiting for Human
 
