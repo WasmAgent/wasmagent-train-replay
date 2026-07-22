@@ -34,3 +34,15 @@
 - [ ] Add `train_replay/cli/main.py` `agent-query` subcommand: `train-replay agent-query <dump_path> --tool trace_tensor --args '{"entity_id": "tensor:0:1:out"}'` dispatching to `tools.py` and printing JSON output
 - [ ] Add `tests/test_agent_tools.py`: call each tool function directly with `examples/generate_sample_trace.py` output and assert return types match the `TypedDict` schema
 - [ ] Add `docs/agent-integration.md`: worked example of calling the tool interface from a `tool_use` message with JSON Schema definitions, and a sample `tool_result` showing root-cause output
+
+## Milestone 5 — Automated Anomaly Detection and Alerting
+
+- [ ] Add `train_replay/anomaly/detector.py`: `AnomalyDetector` abstract base class with `detect(events: List[AEPRecord]) -> List[AnomalySignal]` method and `StatisticalAnomalyDetector` implementation using Z-score/Isolation Forest on event timing and tensor statistics
+- [ ] Add `train_replay/anomaly/profile.py`: `TrainingProfile` dataclass that captures baseline statistics (event intervals, tensor distributions, collective operation patterns) from `fit_on_normal_run(events)` method
+- [ ] Modify `train_replay/recording/modes.py` `compile_recording_policy()`: add optional `anomaly_signal: AnomalySignal | None = None` parameter; return `RecordingMode.FULL` with reason `"statistical anomaly detected"` when anomaly score exceeds threshold
+- [ ] Add `EpochReplayer.anomaly_scan()` method in `train_replay/replay/replayer.py` that runs `StatisticalAnomalyDetector` over the event timeline and returns ranked anomalies with confidence scores
+- [ ] Add `train_replay/alerting/notifier.py`: `AlertNotifier` interface with `send_alert(anomaly: AnomalySignal)` method and `SlackAlertNotifier`/`EmailAlertNotifier` implementations delivering formatted anomaly reports
+- [ ] Add `train-replay anomaly` CLI subcommand in `train_replay/cli/main.py`: `train-replay anomaly <dump_path> --profile <baseline_path> --threshold <z_score> --notify slack:webhook_url` for batch anomaly scanning
+- [ ] Add `tests/test_anomaly.py`: inject synthetic timing anomalies (delayed all-reduce, outlier gradient values) into normal event timeline, assert detector flags them with correct confidence scores
+- [ ] Add `docs/anomaly-guide.md`: explain profile creation from normal training runs, detector configuration (threshold tuning), interpreting anomaly signals, and integrating with alerting pipelines
+- [ ] Update `docs/architecture.md`: add "Anomaly Detection Pipeline" section describing `TrainingProfile.fit_on_normal_run()` → `StatisticalAnomalyDetector.detect()` → `AlertNotifier.send_alert()` data flow
