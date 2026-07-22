@@ -89,7 +89,9 @@ recording layers never parse raw PyTorch data directly; they receive
 | **recording** | `train_replay/recording/` | Decides *what* to record per collective via the recording policy, and accumulates it into an `EpochEvidenceBundle`. |
 | **replay** | `train_replay/replay/` | Traces a tensor back to its causal ancestors and flags suspicious (FULL-mode) actions. |
 | **signing** | `train_replay/signing/` | Ed25519-signs a bundle into a DSSE-style envelope and verifies signatures. |
-| **cli** | `train_replay/cli/` | `ingest`, `trace`, `record` subcommands (entry point `train-replay`); the planned `export` subcommand is specified separately before implementation. |
+| **anomaly** | `train_replay/anomaly/` | Builds a `TrainingProfile` from normal runs, detects statistical anomalies via Z-score/Isolation Forest, and produces `AnomalySignal` records. |
+| **alerting** | `train_replay/alerting/` | Delivers formatted anomaly reports through pluggable notifiers (Slack, email). |
+| **cli** | `train_replay/cli/` | `ingest`, `trace`, `record`, `anomaly` subcommands (entry point `train-replay`); the planned `export` subcommand is specified separately before implementation. |
 
 ### collector
 
@@ -259,6 +261,76 @@ the signature does not verify against `canonical_bytes()`; otherwise `True`.
 `BundleSigner.generate(key_id)` is the convenience constructor for tests and
 development: it generates a fresh Ed25519 keypair and returns the signer plus
 the matching public key.
+
+## Anomaly Detection Pipeline
+
+Milestone 5 adds an automated anomaly detection and alerting path that sits
+between the PROV-DM graph layer and the replay/recording layers. The pipeline
+operates in three stages:
+
+```
+
+CollectiveEvent / TensorEvent timeline
+            │
+            ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  anomaly                                                         │
+│  └── profile.py    TrainingProfile.fit_on_normal_run(events)     │
+│                       → TrainingProfile (baseline statistics)    │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │ TrainingProfile
+                           ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  anomaly                                                         │
+│  └── detector.py   StatisticalAnomalyDetector.detect(events,     │
+│                       profile)                                    │
+│                       → list[AnomalySignal]                      │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │ AnomalySignal
+                           ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  alerting                                                        │
+│  └── notifier.py   AlertNotifier.send_alert(anomaly)             │
+│                       SlackAlertNotifier / EmailAlertNotifier    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Stage 1 — Baseline profiling
+
+`TrainingProfile.fit_on_normal_run(events)` consumes a representative event
+timeline from a known-good training run and computes baseline statistics: event
+intervals, tensor value distributions (mean, variance, percentiles), and
+per-collective-type operation patterns. The resulting `TrainingProfile` is
+serialised to disk and reused for comparison against subsequent runs.
+
+### Stage 2 — Statistical detection
+
+`StatisticalAnomalyDetector.detect(events, profile)` compares a live (or
+replayed) event timeline against the baseline profile using Z-score or
+Isolation Forest methods on event timing and tensor statistics. It returns a
+ranked `list[AnomalySignal]`, each carrying an anomaly score, the offending
+event, and a human-readable description. An anomaly signal can also be passed
+directly to `compile_recording_policy()` as the `anomaly_signal` parameter to
+force escalation to `RecordingMode.FULL`.
+
+### Stage 3 — Alerting
+
+`AlertNotifier.send_alert(anomaly)` delivers a formatted anomaly report. Two
+implementations are provided: `SlackAlertNotifier` (posts to a Slack webhook)
+and `EmailAlertNotifier` (sends via SMTP). The notifier is a pluggable
+interface so additional backends (PagerDuty, webhooks, etc.) can be added
+without modifying the detection logic.
+
+### Integration with existing components
+
+- **Replay layer**: `EpochReplayer.anomaly_scan()` runs the statistical
+detector over an event timeline and returns ranked anomalies with confidence
+scores, complementing the existing `find_root_cause()` and
+`suspicious_actions()` methods.
+- **Recording layer**: An `AnomalySignal` feeds into `compile_recording_policy()`
+to escalate evidence capture for anomalous collectives.
+- **CLI**: The `train-replay anomaly` subcommand orchestrates the full
+pipeline end-to-end: load a profile, scan a dump, optionally notify.
 
 ## Cross-environment compatibility
 
