@@ -1,29 +1,28 @@
 # Bot State
 
-_Last updated: 2026-07-23 12:43 UTC by patrol_
+_Last updated: 2026-07-23 12:44 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
 | Pending | 0 |
-| Active (running/reviewing) | 1 |
+| Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 652 |
+| Completed/Merged (all time) | 653 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #314 | Fix WasmAgent/wasmagent-train-replay#313 (Fix WasmAgent/w... | merged/merged | 2026-07-23 |
 | #311 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/issue_closed_upstream | 2026-07-23 |
 | #313 | Fix WasmAgent/wasmagent-train-replay#310 (Fix WasmAgent/w... | completed/complexity_gate_split | 2026-07-23 |
 | #310 | Fix WasmAgent/wasmagent-train-replay#308 (Adopt canonical... | completed/complexity_gate_split | 2026-07-23 |
 | #308 | Adopt canonical AEP schema from wasmagent-protocol for Ep... | completed/complexity_gate_split | 2026-07-23 |
-| #306 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | merged/merged | 2026-07-23 |
 
 ## Waiting for Human
 
-- #314: Fix WasmAgent/wasmagent-train-replay#313 (Fix WasmAgent/wasmagent-train-replay#310 (Fix WasmAgent/wasmagent-train-replay
 - #300: [milestone Milestone 5 ] Add `EpochReplayer.anomaly_scan()` method in `train_replay/replay/replayer.py` t...
 
 ---
