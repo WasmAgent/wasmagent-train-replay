@@ -133,15 +133,37 @@ class TestDelayedAllReduce:
 
         anomalous_profile = TrainingProfile.fit_on_normal_run(anomalous)
 
-        # Z-score of the anomalous mean vs baseline should be significant (>2)
-        z = _z_score(
-            anomalous_profile.interval_mean_ns,
-            baseline.interval_mean_ns,
-            baseline.interval_std_ns,
+        # With a perfectly regular baseline, std is 0 so the _z_score helper
+        # returns 0. Instead, verify the anomaly through absolute deviation:
+        # the anomalous mean must be strictly larger than the baseline mean.
+        assert anomalous_profile.interval_mean_ns > baseline.interval_mean_ns
+        # The anomalous max interval should be much larger (50ms gap).
+        assert anomalous_profile.interval_max_ns > 10 * baseline.interval_max_ns
+
+        # When the baseline *does* have variance, Z-score should be large.
+        # Use a baseline with slight jitter so std > 0.
+        # Jitter must vary per-step (not per-rank) so per-rank intervals differ.
+        jittered: list[CollectiveEvent] = []
+        for r in range(4):
+            cumulative = 0
+            for s in range(10):
+                jitter = s * 500  # growing jitter: 0, 500, 1000, ...
+                cumulative += 1_000_000 + jitter
+                jittered.append(_ev(r, "all_reduce", cumulative, cumulative + 1000, 1024))
+        jittered_baseline = TrainingProfile.fit_on_normal_run(jittered)
+        assert jittered_baseline.interval_std_ns > 0
+
+        anomalous2 = list(jittered)
+        # Inject a 50ms delay on rank 2, step 5.
+        # Rank 2 events start at index 2*10=20; step 5 is index 25.
+        anomalous2[25] = _ev(2, "all_reduce", 55_000_000, 55_001_000, 1024)
+        anomalous2_profile = TrainingProfile.fit_on_normal_run(anomalous2)
+        z2 = _z_score(
+            anomalous2_profile.interval_mean_ns,
+            jittered_baseline.interval_mean_ns,
+            jittered_baseline.interval_std_ns,
         )
-        # With 4 ranks × 10 steps = 40 events, one 50ms outlier among 39 normal
-        # gaps should produce a detectable deviation
-        assert z > 2.0
+        assert z2 > 2.0
 
 
 class TestStragglerRank:

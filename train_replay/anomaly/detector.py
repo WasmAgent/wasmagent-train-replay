@@ -6,6 +6,12 @@ consume :class:`~train_replay.recording.evidence.AEPRecord` lists and emit
 Z-score-based implementation operating on event timing and tensor delta
 statistics.
 
+Implements the core detection contract specified in issue #288 (Milestone 5).
+Timing analysis operates on inter-event intervals per rank; delta-stat
+analysis operates on per-key numeric values from ``AEPRecord.delta_stats``.
+Both analyses flag statistical outliers via absolute Z-score thresholding and
+detect degenerate cases (zero-variance sequences, duplicate timestamps).
+
 An Isolation Forest backend can be added behind the same ABC once
 ``scikit-learn`` is an optional dependency.
 """
@@ -27,10 +33,12 @@ class AnomalySignal:
         rank: Rank on which the anomaly was observed.
         step: Training step at time of detection.
         metric_name: Which metric crossed the threshold (e.g.
-            ``"timing_zscore"``, ``"delta_zscore"``).
+            ``"timing_zscore"``, ``"delta_zscore:loss"``,
+            ``"zero_variance:timing"``, ``"duplicate_timestamp"``).
         score: Raw statistical score (e.g. absolute Z-score value).
         severity: Normalised severity in [0, 1].
         description: Human-readable explanation of the anomaly.
+        extra: Optional metadata.
     """
 
     action_id: str
@@ -66,8 +74,12 @@ class StatisticalAnomalyDetector(AnomalyDetector):
 
     1. **Timing Z-score** — inter-event intervals (nanoseconds between
        consecutive ``timestamp_ns`` values, per rank) are checked for outliers.
+       Zero-time intervals (duplicate timestamps on the same rank) and
+       zero-variance sequences (frozen clock) are also flagged.
     2. **Delta-stat Z-score** — for each key present in ``delta_stats``
        dictionaries across all events, a per-key Z-score is computed.
+       Zero-variance sequences (all values identical) emit a signal indicating
+       a potentially stuck metric.
 
     An interval or value whose absolute Z-score exceeds *z_threshold* triggers
     an :class:`AnomalySignal`.  Severity is the absolute Z-score clamped to 1.
@@ -88,11 +100,14 @@ class StatisticalAnomalyDetector(AnomalyDetector):
         events: list[Any],
     ) -> list[AnomalySignal]:
         """Return anomaly signals for statistically outlying events."""
+        # Keep only events that carry a timestamp_ns attribute.  After this
+        # filter, direct attribute access is safe for timestamp_ns — we never
+        # fall back to a misleading default of 0.
+        ts_events = [e for e in events if hasattr(e, "timestamp_ns")]
         signals: list[AnomalySignal] = []
 
-        events = [e for e in events if hasattr(e, "timestamp_ns")]
-        signals.extend(self._detect_timing_anomalies(events))
-        signals.extend(self._detect_delta_stat_anomalies(events))
+        signals.extend(self._detect_timing_anomalies(ts_events))
+        signals.extend(self._detect_delta_stat_anomalies(ts_events))
 
         return signals
 
@@ -102,7 +117,11 @@ class StatisticalAnomalyDetector(AnomalyDetector):
         self,
         events: list[Any],
     ) -> list[AnomalySignal]:
-        """Z-score outlier detection on inter-event timing intervals."""
+        """Z-score outlier detection on inter-event timing intervals.
+
+        Also flags duplicate timestamps (zero intervals) and zero-variance
+        sequences (frozen clock) as anomalies.
+        """
         signals: list[AnomalySignal] = []
 
         # Group by rank, compute inter-event intervals.
@@ -113,17 +132,75 @@ class StatisticalAnomalyDetector(AnomalyDetector):
 
         intervals: list[float] = []
         interval_map: dict[float, tuple[Any, Any]] = {}  # interval -> (prev, curr)
+        duplicate_pairs: list[tuple[Any, Any]] = []
+
         for rank_events in by_rank.values():
-            sorted_evts = sorted(rank_events, key=lambda e: getattr(e, "timestamp_ns", 0))
+            sorted_evts = sorted(
+                rank_events,
+                key=lambda e: e.timestamp_ns,
+            )
             for prev, curr in zip(sorted_evts, sorted_evts[1:]):
-                prev_ts = getattr(prev, "timestamp_ns", 0)
-                curr_ts = getattr(curr, "timestamp_ns", 0)
+                prev_ts = prev.timestamp_ns
+                curr_ts = curr.timestamp_ns
                 iv = float(curr_ts - prev_ts)
-                if iv > 0:
+                if iv == 0:
+                    # Duplicate timestamp on the same rank — potential event
+                    # duplication or clock issue.  Flag rather than silently
+                    # dropping.
+                    duplicate_pairs.append((prev, curr))
+                elif iv > 0:
                     intervals.append(iv)
                     interval_map[iv] = (prev, curr)
 
+        # Emit signals for duplicate timestamps.
+        for prev, curr in duplicate_pairs:
+            rank = getattr(curr, "rank", 0)
+            step = getattr(curr, "step", 0)
+            action_id = getattr(curr, "action_id", "")
+            signals.append(AnomalySignal(
+                action_id=action_id,
+                rank=rank,
+                step=step,
+                metric_name="duplicate_timestamp",
+                score=0.0,
+                severity=0.5,
+                description=(
+                    f"Duplicate timestamp on rank {rank} at step {step}: "
+                    f"two consecutive events share the same timestamp_ns"
+                ),
+            ))
+
         if len(intervals) < 2:
+            return signals
+
+        # Check for zero-variance intervals (frozen clock).
+        try:
+            stdev_iv = statistics.stdev(intervals)
+        except statistics.StatisticsError:
+            stdev_iv = 0.0
+
+        if stdev_iv == 0.0 and len(intervals) >= 3:
+            # All intervals are identical — frozen clock, no variation.
+            # Pick the last event as anchor for the signal.
+            _iv, (_prev, anchor_evt) = next(
+                reversed(list(interval_map.items()))
+            )
+            rank = getattr(anchor_evt, "rank", 0)
+            step = getattr(anchor_evt, "step", 0)
+            action_id = getattr(anchor_evt, "action_id", "")
+            mean_iv = statistics.mean(intervals)
+            signals.append(AnomalySignal(
+                action_id=action_id,
+                rank=rank,
+                step=step,
+                metric_name="zero_variance:timing",
+                score=0.0,
+                severity=0.3,
+                description=(
+                    f"All {len(intervals)} inter-event intervals on rank {rank} "
+                    f"are identical ({mean_iv:.0f} ns), indicating zero timing variance"
+                ),
+            ))
             return signals
 
         zscores = _zscore_list(intervals)
@@ -155,7 +232,12 @@ class StatisticalAnomalyDetector(AnomalyDetector):
         self,
         events: list[Any],
     ) -> list[AnomalySignal]:
-        """Z-score outlier detection on per-key delta statistics."""
+        """Z-score outlier detection on per-key delta statistics.
+
+        When all values for a key are identical (zero variance), a signal is
+        emitted indicating a potentially stuck metric, rather than silently
+        skipping.
+        """
         signals: list[AnomalySignal] = []
 
         # Collect all delta_stats dicts.
@@ -180,6 +262,34 @@ class StatisticalAnomalyDetector(AnomalyDetector):
             values = [v for _, v in entries]
             if len(values) < 2:
                 continue
+
+            # Check for zero variance — all values identical.
+            try:
+                stdev_val = statistics.stdev(values)
+            except statistics.StatisticsError:
+                stdev_val = 0.0
+
+            if stdev_val == 0.0 and len(values) >= 3:
+                # Stuck metric: all values are the same across enough samples.
+                anchor_evt, _ = entries[-1]
+                rank = getattr(anchor_evt, "rank", 0)
+                step = getattr(anchor_evt, "step", 0)
+                action_id = getattr(anchor_evt, "action_id", "")
+                mean_val = statistics.mean(values)
+                signals.append(AnomalySignal(
+                    action_id=action_id,
+                    rank=rank,
+                    step=step,
+                    metric_name=f"zero_variance:delta:{key}",
+                    score=0.0,
+                    severity=0.3,
+                    description=(
+                        f"Delta stat '{key}' has zero variance across "
+                        f"{len(values)} samples (all = {mean_val}), "
+                        f"indicating a potentially stuck metric"
+                    ),
+                ))
+                continue  # No point running Z-score on zero-variance data.
 
             zscores = _zscore_list(values)
             for (evt, _val), zs in zip(entries, zscores):
@@ -210,7 +320,12 @@ class StatisticalAnomalyDetector(AnomalyDetector):
 
 
 def _zscore_list(values: list[float]) -> list[float | None]:
-    """Return Z-scores for *values*, or ``None`` where the std-dev is zero."""
+    """Return Z-scores for *values*, or ``None`` where the std-dev is zero.
+
+    Callers that need to handle the zero-variance case should inspect stdev
+    themselves *before* calling this helper, or check the returned list for
+    ``None`` entries.
+    """
     mean = statistics.mean(values)
     if len(values) < 2:
         return [None] * len(values)

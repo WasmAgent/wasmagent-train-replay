@@ -140,13 +140,18 @@ class TestStatisticalAnomalyDetectorEmptyInputs:
         obj = object()  # no timestamp_ns attribute
         assert det.detect([obj]) == []
 
-    def test_two_events_same_timestamp_no_interval(self) -> None:
+    def test_two_events_same_timestamp_emits_duplicate_signal(self) -> None:
+        """Simultaneous events on the same rank produce a duplicate_timestamp signal."""
         det = StatisticalAnomalyDetector()
         events = [
             _record(rank=0, step=1, timestamp_ns=100),
             _record(rank=0, step=2, timestamp_ns=100),
         ]
-        assert det.detect(events) == []
+        signals = det.detect(events)
+        dup = [s for s in signals if s.metric_name == "duplicate_timestamp"]
+        assert len(dup) == 1
+        assert dup[0].step == 2
+        assert dup[0].severity == 0.5
 
 
 # ---------------------------------------------------------------------------
@@ -155,8 +160,11 @@ class TestStatisticalAnomalyDetectorEmptyInputs:
 
 
 class TestStatisticalAnomalyDetectorTiming:
-    def test_uniform_intervals_no_anomaly(self) -> None:
-        """Evenly-spaced timestamps should not trigger timing signals."""
+    def test_uniform_intervals_no_zscore_anomaly(self) -> None:
+        """Evenly-spaced timestamps should not trigger timing Z-score signals.
+
+        A zero_variance signal is expected but no Z-score outlier.
+        """
         det = StatisticalAnomalyDetector(z_threshold=3.0)
         events = [_record(rank=0, step=i, timestamp_ns=i * 1000) for i in range(20)]
         signals = det.detect(events)
@@ -288,7 +296,13 @@ class TestStatisticalAnomalyDetectorSeverity:
         det = StatisticalAnomalyDetector(z_threshold=100.0)
         events = [_record(rank=0, step=i, timestamp_ns=i * 100) for i in range(10)]
         signals = det.detect(events)
-        assert signals == []
+        # Uniform intervals now emit a zero_variance signal; no Z-score
+        # outliers should be present with such a high threshold.
+        zscore_sigs = [s for s in signals if s.metric_name == "timing_zscore"]
+        assert zscore_sigs == []
+        # A zero_variance signal is expected for the perfectly uniform intervals.
+        zv = [s for s in signals if "zero_variance" in s.metric_name]
+        assert len(zv) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -317,3 +331,108 @@ class TestStatisticalAnomalyDetectorCombined:
         types = {s.metric_name for s in signals}
         assert "timing_zscore" in types
         assert "delta_zscore:loss" in types
+
+
+# ---------------------------------------------------------------------------
+# Zero-variance detection (reviewer finding #3)
+# ---------------------------------------------------------------------------
+
+
+class TestStatisticalAnomalyDetectorZeroVariance:
+    """When all values in a sequence are identical (stdev == 0), the detector
+    emits a zero_variance signal rather than silently skipping."""
+
+    def test_zero_variance_timing_emits_signal(self) -> None:
+        """Perfectly uniform intervals with >=3 samples produce a signal."""
+        det = StatisticalAnomalyDetector()
+        events = [_record(rank=0, step=i, timestamp_ns=i * 1000) for i in range(10)]
+        signals = det.detect(events)
+        zv = [s for s in signals if s.metric_name == "zero_variance:timing"]
+        assert len(zv) == 1
+        assert "zero timing variance" in zv[0].description
+        assert zv[0].severity == 0.3
+
+    def test_zero_variance_timing_two_samples_no_signal(self) -> None:
+        """Only 2 identical intervals — below the zero-variance threshold."""
+        det = StatisticalAnomalyDetector()
+        events = [_record(rank=0, step=i, timestamp_ns=i * 1000) for i in range(3)]
+        signals = det.detect(events)
+        zv = [s for s in signals if "zero_variance" in s.metric_name]
+        assert zv == []
+
+    def test_zero_variance_delta_stats_emits_signal(self) -> None:
+        """Identical delta stat values with >=3 samples produce a signal."""
+        det = StatisticalAnomalyDetector()
+        events = [
+            _record(rank=0, step=i, timestamp_ns=i * 100, delta_stats={"loss": 0.5})
+            for i in range(10)
+        ]
+        signals = det.detect(events)
+        zv = [s for s in signals if s.metric_name == "zero_variance:delta:loss"]
+        assert len(zv) == 1
+        assert "stuck metric" in zv[0].description
+        assert zv[0].severity == 0.3
+
+    def test_zero_variance_delta_stats_two_samples_no_signal(self) -> None:
+        """Only 2 identical delta values — below the zero-variance threshold."""
+        det = StatisticalAnomalyDetector()
+        events = [
+            _record(rank=0, step=i, timestamp_ns=i * 100, delta_stats={"loss": 0.5})
+            for i in range(2)
+        ]
+        signals = det.detect(events)
+        zv = [s for s in signals if "zero_variance" in s.metric_name]
+        assert zv == []
+
+    def test_zero_variance_no_false_timing_outliers(self) -> None:
+        """When intervals are uniform, no timing_zscore signals should fire,
+        only the zero_variance signal."""
+        det = StatisticalAnomalyDetector()
+        events = [_record(rank=0, step=i, timestamp_ns=i * 1000) for i in range(10)]
+        signals = det.detect(events)
+        timing_zs = [s for s in signals if s.metric_name == "timing_zscore"]
+        assert timing_zs == []
+
+
+# ---------------------------------------------------------------------------
+# Duplicate timestamp detection (reviewer finding #2)
+# ---------------------------------------------------------------------------
+
+
+class TestStatisticalAnomalyDetectorDuplicateTimestamps:
+    """Zero-time intervals (duplicate timestamps on same rank) are flagged."""
+
+    def test_single_duplicate_pair(self) -> None:
+        det = StatisticalAnomalyDetector()
+        events = [
+            _record(rank=0, step=1, timestamp_ns=100),
+            _record(rank=0, step=2, timestamp_ns=100),
+            _record(rank=0, step=3, timestamp_ns=200),
+        ]
+        signals = det.detect(events)
+        dup = [s for s in signals if s.metric_name == "duplicate_timestamp"]
+        assert len(dup) == 1
+        assert dup[0].step == 2
+
+    def test_multiple_duplicate_pairs(self) -> None:
+        det = StatisticalAnomalyDetector()
+        events = [
+            _record(rank=0, step=1, timestamp_ns=100),
+            _record(rank=0, step=2, timestamp_ns=100),
+            _record(rank=0, step=3, timestamp_ns=100),
+        ]
+        signals = det.detect(events)
+        dup = [s for s in signals if s.metric_name == "duplicate_timestamp"]
+        # 3 events with same timestamp → 2 consecutive pairs (1-2, 2-3)
+        assert len(dup) == 2
+
+    def test_different_ranks_same_timestamp_not_duplicate(self) -> None:
+        """Same timestamp on different ranks is normal — not a duplicate."""
+        det = StatisticalAnomalyDetector()
+        events = [
+            _record(rank=0, step=1, timestamp_ns=100),
+            _record(rank=1, step=1, timestamp_ns=100),
+        ]
+        signals = det.detect(events)
+        dup = [s for s in signals if s.metric_name == "duplicate_timestamp"]
+        assert dup == []
