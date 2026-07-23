@@ -7,7 +7,26 @@ from enum import Enum
 
 from train_replay.recording.escalation import EscalationSignal
 
+# Default threshold for statistical anomaly scores.
+ANOMALY_SCORE_THRESHOLD: float = 0.8
+
+
+@dataclass(frozen=True)
+class AnomalySignal:
+    """Lightweight signal produced by anomaly detectors.
+
+    Forward-compatible with the full train_replay.anomaly.detector.AnomalySignal
+    defined on sibling branches — this is the minimal contract required by
+    compile_recording_policy().
+    """
+
+    score: float
+    description: str = ""
+
+
 __all__ = [
+    "ANOMALY_SCORE_THRESHOLD",
+    "AnomalySignal",
     "EscalationSignal",
     "RecordingMode",
     "RecordingPolicy",
@@ -46,11 +65,15 @@ class RecordingPolicy:
 
 
 def compile_recording_policy(
-    ctx: RiskContext, escalation: EscalationSignal | None = None
+    ctx: RiskContext,
+    escalation: EscalationSignal | None = None,
+    anomaly_signal: AnomalySignal | None = None,
 ) -> RecordingPolicy:
-    """Port of capability-compiler's compileToRecordingPolicy. Priority order matches TS."""
+    """Port of capability-compiler’s compileToRecordingPolicy. Priority order matches TS."""
     if escalation is not None:
         return RecordingPolicy(RecordingMode.FULL, "external escalation signal")
+    if anomaly_signal is not None and anomaly_signal.score > ANOMALY_SCORE_THRESHOLD:
+        return RecordingPolicy(RecordingMode.FULL, "statistical anomaly detected")
     if ctx.was_vetted:
         return RecordingPolicy(RecordingMode.FULL, "tool flagged by vetting")
     if ctx.has_consent_anomaly:

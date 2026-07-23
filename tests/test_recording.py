@@ -148,3 +148,57 @@ def test_record_with_escalation_threads_signal_past_baseline_read():
     assert record.collective_type == "recv"
     assert record.recording_mode == RecordingMode.FULL
     assert record.timestamp_ns == 20_000
+
+
+def test_anomaly_signal_above_threshold_yields_full():
+    from train_replay.recording.modes import ANOMALY_SCORE_THRESHOLD, AnomalySignal
+
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    signal = AnomalySignal(score=ANOMALY_SCORE_THRESHOLD + 0.1)
+    policy = compile_recording_policy(ctx, anomaly_signal=signal)
+
+    assert policy.mode == RecordingMode.FULL
+    assert policy.reason == "statistical anomaly detected"
+
+
+def test_anomaly_signal_below_threshold_does_not_escalate():
+    from train_replay.recording.modes import ANOMALY_SCORE_THRESHOLD, AnomalySignal
+
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    signal = AnomalySignal(score=ANOMALY_SCORE_THRESHOLD - 0.1)
+    policy = compile_recording_policy(ctx, anomaly_signal=signal)
+
+    assert policy.mode == RecordingMode.VALIDATION
+
+
+def test_anomaly_signal_none_is_noop():
+    """Passing anomaly_signal=None behaves the same as omitting it."""
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    policy_with_none = compile_recording_policy(ctx, anomaly_signal=None)
+    policy_without = compile_recording_policy(ctx)
+
+    assert policy_with_none.mode == policy_without.mode
+    assert policy_with_none.reason == policy_without.reason
+
+
+def test_anomaly_signal_at_exact_threshold_does_not_escalate():
+    from train_replay.recording.modes import ANOMALY_SCORE_THRESHOLD, AnomalySignal
+
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    signal = AnomalySignal(score=ANOMALY_SCORE_THRESHOLD)
+    policy = compile_recording_policy(ctx, anomaly_signal=signal)
+
+    # Threshold check is strictly greater-than, so exactly at threshold is no-op.
+    assert policy.mode == RecordingMode.VALIDATION
+
+
+def test_escalation_takes_priority_over_anomaly_signal():
+    """External escalation signal wins over anomaly signal."""
+    from train_replay.recording.modes import ANOMALY_SCORE_THRESHOLD, AnomalySignal
+
+    ctx = RiskContext(side_effect_class=SideEffectClass.READ)
+    anomaly = AnomalySignal(score=ANOMALY_SCORE_THRESHOLD + 0.5)
+    esc = EscalationSignal(source="prom", severity=1.0, metric_name="x")
+    policy = compile_recording_policy(ctx, escalation=esc, anomaly_signal=anomaly)
+    assert policy.mode == RecordingMode.FULL
+    assert policy.reason == "external escalation signal"
