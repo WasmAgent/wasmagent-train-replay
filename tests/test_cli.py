@@ -6,13 +6,16 @@ import binascii
 import json
 import pickle
 from pathlib import Path
+from urllib.request import Request
 
 import pytest
 from click.testing import CliRunner
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from train_replay.cli.main import cli
+from train_replay.anomaly.profile import TrainingProfile
+from train_replay.cli.main import _profile_to_dict, _send_slack_notification, cli
 from train_replay.cli.safemode import SafeMode
+from train_replay.collector.flight_recorder import CollectiveEvent
 
 
 @pytest.fixture
@@ -428,3 +431,226 @@ def test_replay_succeeds_when_safe_mode_off(tmp_path: Path, safe_mode: SafeMode)
     )
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "Replay Result" in result.output
+
+
+# ---------------------------------------------------------------------------
+# `train-replay anomaly` subcommand tests
+# ---------------------------------------------------------------------------
+
+
+def _anomaly_entry(rank: int, size: int, started: int, seq: int) -> dict[str, object]:
+    """One Flight Recorder entry for an anomaly-scan dump."""
+    return {
+        "rank": rank,
+        "pg_name": "default",
+        "collective_seq": "all_reduce",
+        "p2p_src": None,
+        "p2p_dst": None,
+        "input_sizes": [[size]],
+        "time_created_ns": started,
+        "time_started_ns": started,
+        "time_finished_ns": started + 100,
+        "frames": [],
+        "seq_id": seq,
+    }
+
+
+def _write_anomaly_trace(path: Path, entries: list[dict[str, object]]) -> None:
+    with open(path, "wb") as f:
+        pickle.dump({"entries": entries}, f)
+
+
+def _baseline_event(rank: int, size: int, started: int, seq: int) -> CollectiveEvent:
+    return CollectiveEvent(
+        rank=rank,
+        process_group="default",
+        collective_type="all_reduce",
+        src_rank=None,
+        dst_rank=None,
+        tensor_size=size,
+        enqueue_time_ns=started,
+        start_time_ns=started,
+        end_time_ns=started + 100,
+        sequence_id=seq,
+    )
+
+
+def test_anomaly_command_flags_outlier_tensor_size(tmp_path: Path) -> None:
+    """anomaly --profile flags a tensor-size outlier against the baseline."""
+    normal_sizes = [4000, 4100, 3900, 4200]
+    baseline = TrainingProfile.fit_on_normal_run(
+        [_baseline_event(0, s, 1000 + i * 1000, i) for i, s in enumerate(normal_sizes)]
+    )
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text(json.dumps(_profile_to_dict(baseline)), encoding="utf-8")
+
+    entries = [
+        _anomaly_entry(0, s, 1000 + i * 1000, i) for i, s in enumerate(normal_sizes)
+    ]
+    entries.append(
+        _anomaly_entry(0, 1_000_000, 1000 + len(normal_sizes) * 1000, len(normal_sizes))
+    )
+    trace_path = tmp_path / "trace.pkl"
+    _write_anomaly_trace(trace_path, entries)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["anomaly", str(trace_path), "--profile", str(profile_path), "--threshold", "3.0"],
+    )
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "Baseline profile loaded" in result.output
+    assert "Found" in result.output
+    assert "1 anomalies" in result.output
+    assert "tensor_size_zscore" in result.output
+
+
+def test_anomaly_command_self_referential_baseline(tmp_path: Path) -> None:
+    """anomaly without --profile derives a baseline from the dump itself."""
+    entries = [_anomaly_entry(0, 4096, 1000 + i * 1000, i) for i in range(5)]
+    trace_path = tmp_path / "trace.pkl"
+    _write_anomaly_trace(trace_path, entries)
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["anomaly", str(trace_path)])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "Derived self-referential baseline" in result.output
+    # Equal tensor sizes (std 0) and constant spacing (std 0) -> no anomalies.
+    assert "0 anomalies" in result.output
+
+
+def test_anomaly_command_rejects_invalid_profile_json(tmp_path: Path) -> None:
+    """anomaly --profile with malformed JSON exits non-zero."""
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text("{not json", encoding="utf-8")
+    trace_path = tmp_path / "trace.pkl"
+    _write_anomaly_trace(trace_path, [_anomaly_entry(0, 4096, 1000, 0)])
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["anomaly", str(trace_path), "--profile", str(profile_path)]
+    )
+    assert result.exit_code != 0
+    assert "not valid JSON" in result.output
+
+
+def test_anomaly_command_rejects_unsupported_notify_channel(tmp_path: Path) -> None:
+    """anomaly --notify with a non-slack channel exits non-zero."""
+    trace_path = tmp_path / "trace.pkl"
+    _write_anomaly_trace(trace_path, [_anomaly_entry(0, 4096, 1000, 0)])
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["anomaly", str(trace_path), "--notify", "email:foo@example.com"]
+    )
+    assert result.exit_code != 0
+    assert "Unsupported --notify target" in result.output
+
+
+class _FakeSlackResponse:
+    def __enter__(self) -> _FakeSlackResponse:
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return b"ok"
+
+
+def test_send_slack_notification_posts_json_payload() -> None:
+    """_send_slack_notification POSTs a Slack webhook JSON body via the opener."""
+    seen: dict[str, object] = {}
+
+    def opener(request: Request, _timeout: float) -> _FakeSlackResponse:
+        seen["url"] = request.full_url
+        data = request.data
+        assert data is not None
+        seen["body"] = json.loads(data)
+        return _FakeSlackResponse()
+
+    _send_slack_notification(
+        "https://hooks.slack.example/services/T/B/xxx", "hello", opener=opener
+    )
+    assert seen["url"] == "https://hooks.slack.example/services/T/B/xxx"
+    assert seen["body"] == {"text": "hello"}
+
+
+def test_anomaly_command_full_signature_notifies_slack(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Full bullet signature end-to-end: anomaly <dump> --profile --threshold --notify slack:<url>.
+
+    Exercises the ``--notify slack:<webhook_url>`` dispatch path through the
+    CLI by stubbing the module-level notifier, so no network is touched and the
+    dispatched target + message can be asserted.
+    """
+    normal_sizes = [4000, 4100, 3900, 4200]
+    baseline = TrainingProfile.fit_on_normal_run(
+        [_baseline_event(0, s, 1000 + i * 1000, i) for i, s in enumerate(normal_sizes)]
+    )
+    profile_path = tmp_path / "profile.json"
+    profile_path.write_text(json.dumps(_profile_to_dict(baseline)), encoding="utf-8")
+
+    entries = [
+        _anomaly_entry(0, s, 1000 + i * 1000, i) for i, s in enumerate(normal_sizes)
+    ]
+    entries.append(
+        _anomaly_entry(0, 1_000_000, 1000 + len(normal_sizes) * 1000, len(normal_sizes))
+    )
+    trace_path = tmp_path / "trace.pkl"
+    _write_anomaly_trace(trace_path, entries)
+
+    dispatched: list[tuple[str, str]] = []
+
+    def fake_notify(webhook_url: str, message: str, **_kwargs: object) -> None:
+        dispatched.append((webhook_url, message))
+
+    monkeypatch.setattr(
+        "train_replay.cli.main._send_slack_notification", fake_notify
+    )
+
+    webhook = "https://hooks.slack.example/services/T/B/xxx"
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "anomaly",
+            str(trace_path),
+            "--profile",
+            str(profile_path),
+            "--threshold",
+            "3.0",
+            "--notify",
+            f"slack:{webhook}",
+        ],
+    )
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "1 anomalies" in result.output
+    assert "Sent Slack alert" in result.output
+    # The webhook URL after the ``slack:`` prefix is forwarded verbatim.
+    assert dispatched == [(webhook, dispatched[0][1])]
+    assert "1 anomalies" in dispatched[0][1]
+
+
+def test_anomaly_command_skips_notify_when_clean(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``--notify slack:...`` is a no-op (no dispatch) when no anomalies are found."""
+    entries = [_anomaly_entry(0, 4096, 1000 + i * 1000, i) for i in range(5)]
+    trace_path = tmp_path / "trace.pkl"
+    _write_anomaly_trace(trace_path, entries)
+
+    def fail_if_called(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("notifier must not run when there are no anomalies")
+
+    monkeypatch.setattr("train_replay.cli.main._send_slack_notification", fail_if_called)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["anomaly", str(trace_path), "--notify", "slack:https://hooks.example/x"],
+    )
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "0 anomalies" in result.output
+    assert "Slack notification skipped" in result.output
