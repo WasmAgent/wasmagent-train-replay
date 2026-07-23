@@ -24,6 +24,11 @@ def test_import_replay() -> None:
     import train_replay.replay  # noqa: F401
 
 
+def test_import_anomaly() -> None:
+    """train_replay.anomaly subpackage is importable."""
+    import train_replay.anomaly  # noqa: F401
+
+
 def test_import_recording() -> None:
     """train_replay.recording subpackage is importable."""
     import train_replay.recording  # noqa: F401
