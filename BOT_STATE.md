@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-23 12:33 UTC by patrol_
+_Last updated: 2026-07-23 12:43 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-23 12:33 UTC by patrol_
 
 ## Waiting for Human
 
+- #314: Fix WasmAgent/wasmagent-train-replay#313 (Fix WasmAgent/wasmagent-train-replay#310 (Fix WasmAgent/wasmagent-train-replay
 - #300: [milestone Milestone 5 ] Add `EpochReplayer.anomaly_scan()` method in `train_replay/replay/replayer.py` t...
 
 ---
