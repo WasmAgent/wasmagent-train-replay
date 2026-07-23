@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-23 13:56 UTC by patrol_
+_Last updated: 2026-07-23 14:06 UTC by patrol_
 
 ## Queue
 
@@ -9,17 +9,17 @@ _Last updated: 2026-07-23 13:56 UTC by patrol_
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 0 |
-| Completed/Merged (all time) | 653 |
+| Completed/Merged (all time) | 654 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #317 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-23 |
 | #314 | Fix WasmAgent/wasmagent-train-replay#313 (Fix WasmAgent/w... | merged/merged | 2026-07-23 |
 | #311 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | completed/issue_closed_upstream | 2026-07-23 |
 | #313 | Fix WasmAgent/wasmagent-train-replay#310 (Fix WasmAgent/w... | completed/complexity_gate_split | 2026-07-23 |
 | #310 | Fix WasmAgent/wasmagent-train-replay#308 (Adopt canonical... | completed/complexity_gate_split | 2026-07-23 |
-| #308 | Adopt canonical AEP schema from wasmagent-protocol for Ep... | completed/complexity_gate_split | 2026-07-23 |
 
 ## Waiting for Human
 
