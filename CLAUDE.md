@@ -161,3 +161,30 @@ When an issue is closed and its checkbox can be ticked, patrol will:
 1. Tick the checkbox in `docs/15-milestones.md`
 2. Open the next unchecked bullet as a new issue
 This creates a self-driving development loop.
+
+
+## New Subpackage Addition Checklist (MANDATORY)
+
+The verify.yml `python-import` gate explicitly imports specific modules.
+When you add a new `train_replay/<module>/` subpackage, CI will fail unless ALL steps below are done in the same PR:
+
+**1. Create `train_replay/<module>/__init__.py`** with public re-exports
+**2. Verify it imports cleanly:**
+```bash
+python -c "import train_replay.<module>"
+```
+**3. Add the import to `.claude-bot/verify.yml`** — find the `python-import` step and add:
+```
+import train_replay.<module>
+```
+(all imports are semicolon-separated on one line)
+**4. Add `tests/test_<module>.py`** with at least one test covering the main class/function
+**5. Mock ALL torch/GPU objects** — never import real torch in tests:
+```python
+from unittest.mock import MagicMock, patch
+```
+
+### Common failure modes:
+- Module missing `__init__.py` → `python-import` gate fails with ModuleNotFoundError
+- `.claude-bot/verify.yml` python-import line not updated → gate imports succeed locally but miss the new module
+- Test file absent → `pytest` finds no tests for new code but does not error — the import gate is the real blocker
