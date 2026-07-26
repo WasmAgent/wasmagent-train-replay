@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-26 20:45 UTC by patrol_
+_Last updated: 2026-07-26 20:58 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-26 20:45 UTC by patrol_
 
 ## Waiting for Human
 
+- #346: [milestone Milestone 6 ] Extend `EpochRecorder` to capture per-step determinism anchors (RNG seed snapsho...
 - #322: [milestone Milestone 5] Add wasmagent-train-replay repository to bot configuration in repos.yml
 
 ---
