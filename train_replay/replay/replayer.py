@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ..anomaly.detector import AnomalySignal, StatisticalAnomalyDetector
 from ..collector.flight_recorder import CollectiveEvent
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import AEPRecord, EpochEvidenceBundle
@@ -121,6 +122,31 @@ class EpochReplayer:
             suspicious_actions=suspicious,
             collision_report=collision_report,
         )
+
+    def anomaly_scan(
+        self,
+        bundle: EpochEvidenceBundle,
+        z_threshold: float = 3.0,
+    ) -> list[AnomalySignal]:
+        """Run :class:`StatisticalAnomalyDetector` over the bundle's event
+        timeline and return ranked anomalies sorted by severity descending.
+
+        Each :class:`AEPRecord` in *bundle.actions* is passed to the
+        detector, which computes Z-scores on inter-event timing intervals
+        (per rank) and on ``delta_stats`` numeric values.  Results are
+        ranked so the highest-confidence anomalies appear first.
+
+        Parameters:
+            bundle: The evidence bundle to scan.
+            z_threshold: Absolute Z-score threshold forwarded to the
+                :class:`StatisticalAnomalyDetector`.
+
+        Returns:
+            Anomaly signals sorted by severity (highest first).
+        """
+        detector = StatisticalAnomalyDetector(z_threshold=z_threshold)
+        signals = detector.detect(bundle.actions)
+        return sorted(signals, key=lambda s: s.severity, reverse=True)
 
     @staticmethod
     def _record_to_collective_event(record: AEPRecord) -> CollectiveEvent:
