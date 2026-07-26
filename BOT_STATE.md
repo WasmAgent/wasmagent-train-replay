@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-26 12:08 UTC by patrol_
+_Last updated: 2026-07-26 12:22 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 5 |
+| Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 1 |
-| Completed/Merged (all time) | 657 |
+| Completed/Merged (all time) | 662 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
-| #321 | Create StatisticalAnomalyDetector class for train_replay ... | merged/auto_closed_resolved | 2026-07-25 |
-| #320 | [milestone Milestone 5] Create foundational replay infras... | merged/auto_closed_resolved | 2026-07-25 |
-| #318 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-23 |
-| #317 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-23 |
-| #314 | Fix WasmAgent/wasmagent-train-replay#313 (Fix WasmAgent/w... | merged/merged | 2026-07-23 |
+| #327 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-26 |
+| #323 | [milestone Milestone 1 ] Fix `train_replay/replay/replaye... | merged/auto_closed_resolved | 2026-07-26 |
+| #324 | [milestone Milestone 1 ] Fix `replay_rank()` in `train_re... | merged/auto_closed_resolved | 2026-07-26 |
+| #325 | [milestone Milestone 2 ] Add `train_replay/signing/signer... | merged/auto_closed_resolved | 2026-07-26 |
+| #326 | [milestone Milestone 3 ] Add `train_replay/recording/esca... | merged/auto_closed_resolved | 2026-07-26 |
 
 ## Waiting for Human
 
