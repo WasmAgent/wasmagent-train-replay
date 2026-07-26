@@ -46,3 +46,17 @@
 - [ ] Add `tests/test_anomaly.py`: inject synthetic timing anomalies (delayed all-reduce, outlier gradient values) into normal event timeline, assert detector flags them with correct confidence scores
 - [ ] Add `docs/anomaly-guide.md`: explain profile creation from normal training runs, detector configuration (threshold tuning), interpreting anomaly signals, and integrating with alerting pipelines
 - [ ] Update `docs/architecture.md`: add "Anomaly Detection Pipeline" section describing `TrainingProfile.fit_on_normal_run()` → `StatisticalAnomalyDetector.detect()` → `AlertNotifier.send_alert()` data flow
+
+## Milestone 6 — Differential Divergence Replay
+
+- [ ] Add `train_replay/replay/diff.py` with `DivergenceReplayer`: accepts two `ReplayResult` objects (baseline, candidate), walks rank-aligned action streams, and emits the first step where actions disagree along with an N-step context window on either side
+- [ ] Add `DivergenceReport` dataclass to `train_replay/replay/types.py` with fields `rank`, `first_divergence_step`, `baseline_action`, `candidate_action`, `context_window: list[AEPRecord]`, `correlated_collision: bool`, and `correlated_escalation: str | None`
+- [ ] Add `EpochReplayer.replay_diff(baseline_dump: str, candidate_dump: str) -> dict[int, DivergenceReport]` in `train_replay/replay/replayer.py`: loads both dumps, calls `replay_rank()` per rank for each, then delegates pairwise comparison to `DivergenceReplayer`
+- [ ] Correlate divergence with collisions: when a rank's `first_divergence_step` lands inside a desync window reported by that rank's `ReplayResult.collision_report`, set `correlated_collision=True` and attach the matching desync `AEPRecord`
+- [ ] Correlate divergence with escalation: when an `EscalationSignal` timestamp overlaps the divergence step, populate `correlated_escalation` with the signal's `metric_name` and `severity`
+- [ ] Add `train_replay/cli/main.py` `diff` subcommand: `train-replay diff <baseline_dump> <candidate_dump> [--rank N] [--context 10] [--output path]` that prints the report as JSON and exits non-zero when any divergence is found (CI-friendly)
+- [ ] Add `tests/test_diff.py`: construct two dumps that diverge at a known step on rank 1, assert `first_divergence_step`, `baseline_action`, `candidate_action`, and `correlated_collision` are correct
+- [ ] Add `tests/test_diff.py`: assert byte-identical dumps yield an empty report (`divergences == {}`) and that the `diff` CLI exits 0
+- [ ] Add `examples/divergence_demo.py`: load two pre-recorded dumps, invoke `replay_diff()`, and print the per-rank divergence report to stdout
+- [ ] Update `docs/architecture.md`: add a "Differential Replay" subsection describing the baseline/candidate comparison pipeline and how divergence points correlate with collision and escalation signals
+- [ ] Add `docs/auditor-guide.md` worked example: use `train-replay diff` to root-cause a divergent run from two signed evidence bundles produced via the Milestone 2 `export` subcommand
