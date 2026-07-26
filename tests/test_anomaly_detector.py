@@ -9,7 +9,7 @@ from train_replay.anomaly.detector import (
     AnomalySignal,
     StatisticalAnomalyDetector,
 )
-from train_replay.recording.evidence import AEPRecord
+from train_replay.recording.evidence import AEPRecord, EpochEvidenceBundle
 from train_replay.recording.modes import RecordingMode
 
 # ---------------------------------------------------------------------------
@@ -436,3 +436,92 @@ class TestStatisticalAnomalyDetectorDuplicateTimestamps:
         signals = det.detect(events)
         dup = [s for s in signals if s.metric_name == "duplicate_timestamp"]
         assert dup == []
+
+
+# ---------------------------------------------------------------------------
+# EpochReplayer.anomaly_scan() integration
+# ---------------------------------------------------------------------------
+
+
+class TestEpochReplayerAnomalyScan:
+    """anomaly_scan() delegates to StatisticalAnomalyDetector and ranks by
+    severity descending."""
+
+    def _make_bundle(self, actions: list[AEPRecord]) -> EpochEvidenceBundle:
+        return EpochEvidenceBundle(epoch=0, actions=actions)
+
+    def test_empty_bundle_returns_empty(self) -> None:
+        from train_replay.graph.prov_graph import ProvGraph
+        from train_replay.replay.replayer import EpochReplayer
+
+        replayer = EpochReplayer(ProvGraph())
+        bundle = self._make_bundle([])
+        assert replayer.anomaly_scan(bundle) == []
+
+    def test_uniform_events_no_timing_outliers(self) -> None:
+        from train_replay.graph.prov_graph import ProvGraph
+        from train_replay.replay.replayer import EpochReplayer
+
+        replayer = EpochReplayer(ProvGraph())
+        events = [
+            _record(rank=0, step=i, timestamp_ns=i * 1000)
+            for i in range(20)
+        ]
+        bundle = self._make_bundle(events)
+        signals = replayer.anomaly_scan(bundle)
+        # Uniform intervals: zero_variance signal only, no z-score outliers.
+        outliers = [s for s in signals if s.metric_name == "timing_zscore"]
+        assert outliers == []
+
+    def test_outlier_detected_and_ranked(self) -> None:
+        from train_replay.graph.prov_graph import ProvGraph
+        from train_replay.replay.replayer import EpochReplayer
+
+        replayer = EpochReplayer(ProvGraph())
+        events = [_record(rank=0, step=i, timestamp_ns=i * 1000) for i in range(18)]
+        events.append(
+            _record(rank=0, step=18, timestamp_ns=18 * 1000 + 500_000)
+        )
+        bundle = self._make_bundle(events)
+        signals = replayer.anomaly_scan(bundle, z_threshold=2.0)
+        timing = [s for s in signals if s.metric_name == "timing_zscore"]
+        assert len(timing) == 1
+        assert timing[0].step == 18
+
+    def test_results_sorted_by_severity_descending(self) -> None:
+        from train_replay.graph.prov_graph import ProvGraph
+        from train_replay.replay.replayer import EpochReplayer
+
+        replayer = EpochReplayer(ProvGraph())
+        events = [
+            _record(rank=0, step=i, timestamp_ns=i * 1000, delta_stats={"loss": 0.1})
+            for i in range(18)
+        ]
+        # Outlier in both timing and delta stats.
+        events.append(
+            _record(
+                rank=0,
+                step=18,
+                timestamp_ns=18 * 1000 + 500_000,
+                delta_stats={"loss": 50.0},
+            )
+        )
+        bundle = self._make_bundle(events)
+        signals = replayer.anomaly_scan(bundle, z_threshold=2.0)
+        severities = [s.severity for s in signals]
+        assert severities == sorted(severities, reverse=True)
+
+    def test_custom_z_threshold_forwarded(self) -> None:
+        from train_replay.graph.prov_graph import ProvGraph
+        from train_replay.replay.replayer import EpochReplayer
+
+        replayer = EpochReplayer(ProvGraph())
+        events = [_record(rank=0, step=i, timestamp_ns=i * 1000) for i in range(18)]
+        events.append(
+            _record(rank=0, step=18, timestamp_ns=18 * 1000 + 500_000)
+        )
+        bundle = self._make_bundle(events)
+        # High threshold should suppress the outlier.
+        signals = replayer.anomaly_scan(bundle, z_threshold=100.0)
+        timing = [s for s in signals if s.metric_name == "timing_zscore"]
+        assert timing == []
