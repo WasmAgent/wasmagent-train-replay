@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from ..collector.flight_recorder import CollectiveEvent
-from .evidence import AEPRecord, EpochEvidenceBundle
+from .evidence import AEPRecord, DeterminismAnchor, EpochEvidenceBundle
 from .modes import (
     EscalationSignal,
     RecordingMode,
@@ -60,6 +60,27 @@ class EpochRecorder:
             collective_type=event.collective_type,
             recording_mode=policy.mode,
             timestamp_ns=event.start_time_ns,
+        ))
+
+    def record_determinism_anchor(
+        self,
+        step: int,
+        rank: int,
+        rng_seed_snapshot: int,
+        collective_order_hash: str,
+        reduce_scatter_checksum: str,
+    ) -> None:
+        """Capture a per-step determinism anchor into the evidence bundle.
+
+        These lightweight fingerprints allow two replays to be compared
+        without re-reading raw tensors.
+        """
+        self._bundle.determinism_anchors.append(DeterminismAnchor(
+            step=step,
+            rank=rank,
+            rng_seed_snapshot=rng_seed_snapshot,
+            collective_order_hash=collective_order_hash,
+            reduce_scatter_checksum=reduce_scatter_checksum,
         ))
 
     def escalate_rank(self, rank: int) -> None:

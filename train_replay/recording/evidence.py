@@ -26,6 +26,20 @@ class AEPRecord:
     parent_action_id: str | None = None
 
 
+@dataclass(frozen=True)
+class DeterminismAnchor:
+    """Per-step determinism anchor for cross-run comparison.
+
+    Captures lightweight fingerprints at each training step so two replays
+    can be compared without re-reading raw tensors.
+    """
+    step: int
+    rank: int
+    rng_seed_snapshot: int
+    collective_order_hash: str
+    reduce_scatter_checksum: str
+
+
 _SUPPORTED_SCHEMA_VERSIONS: frozenset[str] = frozenset({"train-aep/v0.1"})
 
 
@@ -35,6 +49,7 @@ class EpochEvidenceBundle:
     run_id: str = ""
     epoch: int = 0
     actions: list[AEPRecord] = field(default_factory=list)
+    determinism_anchors: list[DeterminismAnchor] = field(default_factory=list)
     signature: dict[str, str] | None = None
 
     def canonical_bytes(self) -> bytes:
@@ -98,11 +113,23 @@ class EpochEvidenceBundle:
             )
             for a in actions_raw
         ]
+        anchors_raw: list[dict[str, Any]] = d.get("determinism_anchors", [])
+        anchors = [
+            DeterminismAnchor(
+                step=a["step"],
+                rank=a["rank"],
+                rng_seed_snapshot=a["rng_seed_snapshot"],
+                collective_order_hash=a["collective_order_hash"],
+                reduce_scatter_checksum=a["reduce_scatter_checksum"],
+            )
+            for a in anchors_raw
+        ]
         return cls(
             schema_version=version,
             run_id=d.get("run_id", ""),
             epoch=d.get("epoch", 0),
             actions=actions,
+            determinism_anchors=anchors,
             signature=d.get("signature"),
         )
 

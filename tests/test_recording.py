@@ -202,3 +202,85 @@ def test_escalation_takes_priority_over_anomaly_signal():
     policy = compile_recording_policy(ctx, escalation=esc, anomaly_signal=anomaly)
     assert policy.mode == RecordingMode.FULL
     assert policy.reason == "external escalation signal"
+
+
+def test_record_determinism_anchor_appends_to_bundle():
+    from train_replay.recording.evidence import DeterminismAnchor
+
+    recorder = EpochRecorder(run_id='run-1', epoch=5)
+    recorder.record_determinism_anchor(
+        step=10,
+        rank=2,
+        rng_seed_snapshot=42,
+        collective_order_hash='abc123',
+        reduce_scatter_checksum='def456',
+    )
+
+    b = recorder.bundle()
+    assert len(b.determinism_anchors) == 1
+    anchor = b.determinism_anchors[0]
+    assert isinstance(anchor, DeterminismAnchor)
+    assert anchor.step == 10
+    assert anchor.rank == 2
+    assert anchor.rng_seed_snapshot == 42
+    assert anchor.collective_order_hash == 'abc123'
+    assert anchor.reduce_scatter_checksum == 'def456'
+
+
+def test_multiple_determinism_anchors_per_rank():
+    recorder = EpochRecorder(run_id='run-2', epoch=1)
+    for step in range(3):
+        for rank in range(2):
+            recorder.record_determinism_anchor(
+                step=step,
+                rank=rank,
+                rng_seed_snapshot=step * 100 + rank,
+                collective_order_hash=f'hash-{step}-{rank}',
+                reduce_scatter_checksum=f'cksum-{step}-{rank}',
+            )
+
+    anchors = recorder.bundle().determinism_anchors
+    assert len(anchors) == 6
+    assert anchors[0].step == 0
+    assert anchors[0].rank == 0
+    assert anchors[-1].step == 2
+    assert anchors[-1].rank == 1
+
+
+def test_determinism_anchor_roundtrip_through_json():
+
+    recorder = EpochRecorder(run_id='run-rt', epoch=3)
+    recorder.record_determinism_anchor(
+        step=1, rank=0, rng_seed_snapshot=99,
+        collective_order_hash='h1', reduce_scatter_checksum='c1',
+    )
+    recorder.record_determinism_anchor(
+        step=2, rank=1, rng_seed_snapshot=100,
+        collective_order_hash='h2', reduce_scatter_checksum='c2',
+    )
+
+    b = recorder.bundle()
+    restored = b.from_json(b.to_json())
+
+    assert len(restored.determinism_anchors) == 2
+    a0 = restored.determinism_anchors[0]
+    assert a0.step == 1
+    assert a0.rank == 0
+    assert a0.rng_seed_snapshot == 99
+    assert a0.collective_order_hash == 'h1'
+    assert a0.reduce_scatter_checksum == 'c1'
+    a1 = restored.determinism_anchors[1]
+    assert a1.step == 2
+    assert a1.rank == 1
+
+
+def test_determinism_anchor_included_in_canonical_bytes():
+
+    r1 = EpochRecorder(run_id='canon', epoch=0)
+    r2 = EpochRecorder(run_id='canon', epoch=0)
+
+    r1.record_determinism_anchor(1, 0, 10, 'ha', 'ca')
+    r2.record_determinism_anchor(1, 0, 99, 'hb', 'cb')
+
+    # Different anchors must produce different digests.
+    assert r1.bundle().digest() != r2.bundle().digest()
