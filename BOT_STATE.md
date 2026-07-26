@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-26 18:22 UTC by patrol_
+_Last updated: 2026-07-26 18:53 UTC by patrol_
 
 ## Queue
 
@@ -9,17 +9,17 @@ _Last updated: 2026-07-26 18:22 UTC by patrol_
 | Pending | 0 |
 | Active (running/reviewing) | 0 |
 | Blocked | 1 |
-| Completed/Merged (all time) | 672 |
+| Completed/Merged (all time) | 675 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #340 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-26 |
+| #339 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-26 |
+| #341 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/auto_closed_resolved | 2026-07-26 |
 | #335 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-26 |
 | #334 | [milestone Milestone 3 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-26 |
-| #336 | [milestone Milestone 4 ] Add `train_replay/agent/__init__... | merged/auto_closed_resolved | 2026-07-26 |
-| #337 | [milestone Milestone 5 ] Modify `train_replay/recording/m... | merged/auto_closed_resolved | 2026-07-26 |
-| #338 | [milestone Milestone 5 ] Add `EpochReplayer.anomaly_scan(... | merged/auto_closed_resolved | 2026-07-26 |
 
 ## Waiting for Human
 
