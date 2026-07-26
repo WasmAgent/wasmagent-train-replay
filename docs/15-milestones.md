@@ -60,3 +60,17 @@
 - [ ] Add `examples/divergence_demo.py`: load two pre-recorded dumps, invoke `replay_diff()`, and print the per-rank divergence report to stdout
 - [ ] Update `docs/architecture.md`: add a "Differential Replay" subsection describing the baseline/candidate comparison pipeline and how divergence points correlate with collision and escalation signals
 - [ ] Add `docs/auditor-guide.md` worked example: use `train-replay diff` to root-cause a divergent run from two signed evidence bundles produced via the Milestone 2 `export` subcommand
+
+## Milestone 6 — Cross-Run Regression & Divergence Analysis
+
+- [ ] Add `train_replay/replay/differ.py` `ReplayDiffer` class with `diff(left: ReplayResult, right: ReplayResult) -> DivergenceReport` that walks paired event streams, locates the first divergence step per rank, and classifies it (`tensor_value`, `collective_order`, `grad_norm`, `shape`)
+- [ ] Add `train_replay/replay/types.py` `DivergenceReport` dataclass (`first_divergence_step: int`, `divergences: list[Divergence]`, `per_rank_similarity: dict[int, float]`, `summary: str`) and a `to_json()`/`to_cbor()` pair mirroring `EpochEvidenceBundle`
+- [ ] Extend `EpochRecorder` to capture per-step determinism anchors (RNG seed snapshot, collective-order hash, reduce-scatter checksum) into the evidence bundle so two replays are comparable without re-reading raw tensors
+- [ ] Add `train_replay/replay/replayer.py` `ReplayResult.__eq__` and `__hash__` based on determinism anchors so `diff` can short-circuit identical runs without per-event walks
+- [ ] Add `train_replay/cli/main.py` `diff` subcommand: `train-replay diff <dump_a> <dump_b> [--rank N] [--format json|md|cbor] [--output PATH]` that loads both dumps, replays each, and emits the `DivergenceReport`
+- [ ] Extend `train_replay/signing/signer.py` `BundleSigner.sign_divergence_report()` so auditor-facing comparison outputs carry a DSSE envelope over both source bundles' digests
+- [ ] Add `tests/test_diff.py`: inject a single tensor mutation at step K across two dumps, assert `ReplayDiffer.diff()` returns `first_divergence_step == K` and `per_rank_similarity < 1.0`; assert identical replays yield `first_divergence_step == None` and similarity `1.0`
+- [ ] Add `tests/test_diff.py`: round-trip a `DivergenceReport` through `to_cbor()` / `verify_divergence_report()` and assert the dual-bundle signature validates only against the originating digests
+- [ ] Wire `ReplayDiffer` into `examples/fault_injection_demo.py` to print a before/after divergence report alongside the existing collision output
+- [ ] Add `docs/regression-analysis.md`: worked example comparing two training dumps, interpreting the divergence report fields, and using the `diff` CLI to attribute a regression to a specific rank/step
+- [ ] Update `docs/cli-reference.md` with the `diff` subcommand entry (all flags) and update `docs/architecture.md` with a "Cross-Run Divergence Analysis" section mapping the `ReplayResult → ReplayDiffer → DivergenceReport → signed report` data path
