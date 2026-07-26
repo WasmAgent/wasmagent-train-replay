@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-26 22:59 UTC by patrol_
+_Last updated: 2026-07-26 23:19 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 8 |
-| Active (running/reviewing) | 2 |
+| Pending | 12 |
+| Active (running/reviewing) | 1 |
 | Blocked | 4 |
-| Completed/Merged (all time) | 679 |
+| Completed/Merged (all time) | 681 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #360 | [milestone Milestone 6 ] Add `EpochReplayer.replay_diff(b... | merged/auto_closed_resolved | 2026-07-26 |
+| #346 | [milestone Milestone 6 ] Extend `EpochRecorder` to captur... | completed/maintenance_done | 2026-07-26 |
 | #355 | [milestone Milestone 6 ] Update `docs/cli-reference.md` w... | merged/auto_closed_resolved | 2026-07-26 |
 | #358 | [milestone Milestone 6 ] Add `EpochReplayer.replay_diff(b... | merged/auto_closed_resolved | 2026-07-26 |
 | #353 | [milestone Milestone 6 ] Wire `ReplayDiffer` into `exampl... | merged/auto_closed_resolved | 2026-07-26 |
-| #346 | [milestone Milestone 6 ] Extend `EpochRecorder` to captur... | completed/maintenance_done | 2026-07-26 |
-| #340 | [milestone Milestone 3 ] Add `EpochRecorder.record_with_e... | merged/auto_closed_resolved | 2026-07-26 |
 
 ## Waiting for Human
 
