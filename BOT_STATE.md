@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-27 01:31 UTC by patrol_
+_Last updated: 2026-07-27 03:02 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 10 |
+| Pending | 8 |
 | Active (running/reviewing) | 1 |
-| Blocked | 7 |
-| Completed/Merged (all time) | 683 |
+| Blocked | 6 |
+| Completed/Merged (all time) | 686 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #344 | [milestone Milestone 6 ] Add `train_replay/replay/differ.... | merged/auto_closed_resolved | 2026-07-27 |
+| #354 | [milestone Milestone 6 ] Add `docs/regression-analysis.md... | merged/auto_closed_resolved | 2026-07-27 |
+| #350 | [milestone Milestone 6 ] Extend `train_replay/signing/sig... | merged/merged | 2026-07-27 |
 | #365 | [milestone Milestone 6 ] Update `docs/architecture.md`: a... | merged/auto_closed_resolved | 2026-07-27 |
 | #346 | [milestone Milestone 6 ] Extend `EpochRecorder` to captur... | completed/maintenance_done | 2026-07-26 |
-| #360 | [milestone Milestone 6 ] Add `EpochReplayer.replay_diff(b... | merged/auto_closed_resolved | 2026-07-26 |
-| #346 | [milestone Milestone 6 ] Extend `EpochRecorder` to captur... | completed/maintenance_done | 2026-07-26 |
-| #355 | [milestone Milestone 6 ] Update `docs/cli-reference.md` w... | merged/auto_closed_resolved | 2026-07-26 |
 
 ## Waiting for Human
 
