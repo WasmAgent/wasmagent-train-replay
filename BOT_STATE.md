@@ -1,14 +1,14 @@
 # Bot State
 
-_Last updated: 2026-07-27 05:55 UTC by patrol_
+_Last updated: 2026-07-27 05:56 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 12 |
-| Active (running/reviewing) | 1 |
-| Blocked | 1 |
+| Pending | 14 |
+| Active (running/reviewing) | 0 |
+| Blocked | 0 |
 | Completed/Merged (all time) | 690 |
 
 ## Recent Activity (last 5)
@@ -23,6 +23,7 @@ _Last updated: 2026-07-27 05:55 UTC by patrol_
 
 ## Waiting for Human
 
+- #356: [milestone Milestone 6 ] Add `train_replay/replay/diff.py` with `DivergenceReplayer`: accepts two `Replay...
 - #346: [milestone Milestone 6 ] Extend `EpochRecorder` to capture per-step determinism anchors (RNG seed snapsho...
 - #322: [milestone Milestone 5] Add wasmagent-train-replay repository to bot configuration in repos.yml
 
