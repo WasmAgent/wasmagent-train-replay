@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-27 08:24 UTC by patrol_
+_Last updated: 2026-07-27 08:29 UTC by patrol_
 
 ## Queue
 
@@ -23,6 +23,7 @@ _Last updated: 2026-07-27 08:24 UTC by patrol_
 
 ## Waiting for Human
 
+- #370: [milestone Milestone 6 ] Extend `train_replay/signing/signer.py` `BundleSigner.sign_divergence_report()` ...
 - #356: [milestone Milestone 6 ] Add `train_replay/replay/diff.py` with `DivergenceReplayer`: accepts two `Replay...
 - #322: [milestone Milestone 5] Add wasmagent-train-replay repository to bot configuration in repos.yml
 
