@@ -1,6 +1,6 @@
 # Bot State
 
-_Last updated: 2026-07-27 12:24 UTC by patrol_
+_Last updated: 2026-07-27 14:51 UTC by patrol_
 
 ## Queue
 
@@ -8,7 +8,7 @@ _Last updated: 2026-07-27 12:24 UTC by patrol_
 |---|---|
 | Pending | 9 |
 | Active (running/reviewing) | 0 |
-| Blocked | 1 |
+| Blocked | 0 |
 | Completed/Merged (all time) | 693 |
 
 ## Recent Activity (last 5)
@@ -24,8 +24,8 @@ _Last updated: 2026-07-27 12:24 UTC by patrol_
 ## Waiting for Human
 
 - #366: [milestone Milestone 6 ] Add `docs/auditor-guide.md` worked example: use `train-replay diff` to root-caus...
+- #362: [milestone Milestone 6 ] Add `tests/test_diff.py`: construct two dumps that diverge at a known step on ra...
 - #356: [milestone Milestone 6 ] Add `train_replay/replay/diff.py` with `DivergenceReplayer`: accepts two `Replay...
-- #322: [milestone Milestone 5] Add wasmagent-train-replay repository to bot configuration in repos.yml
 
 ---
 _Maintained automatically by claude-bot-go patrol. Do not edit._
