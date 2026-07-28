@@ -1,25 +1,25 @@
 # Bot State
 
-_Last updated: 2026-07-27 23:27 UTC by patrol_
+_Last updated: 2026-07-28 01:25 UTC by patrol_
 
 ## Queue
 
 | State | Count |
 |---|---|
-| Pending | 8 |
+| Pending | 7 |
 | Active (running/reviewing) | 1 |
-| Blocked | 2 |
-| Completed/Merged (all time) | 693 |
+| Blocked | 0 |
+| Completed/Merged (all time) | 695 |
 
 ## Recent Activity (last 5)
 
 | Issue | Title | Outcome | Date |
 |---|---|---|---|
+| #374 | [milestone Milestone 6] Add DivergenceReport dataclass an... | merged/auto_closed_resolved | 2026-07-28 |
+| #376 | [milestone Milestone 6 ] Extend `train_replay/signing/sig... | merged/merged | 2026-07-28 |
 | #345 | [milestone Milestone 6 ] Add `train_replay/replay/types.p... | merged/merged | 2026-07-27 |
 | #370 | [milestone Milestone 6 ] Extend `train_replay/signing/sig... | merged/auto_closed_resolved | 2026-07-27 |
 | #346 | [milestone Milestone 6 ] Extend `EpochRecorder` to captur... | merged/auto_closed_resolved | 2026-07-27 |
-| #364 | [milestone Milestone 6 ] Add `examples/divergence_demo.py... | merged/auto_closed_resolved | 2026-07-27 |
-| #346 | [milestone Milestone 6 ] Extend `EpochRecorder` to captur... | completed/maintenance_done | 2026-07-27 |
 
 ## Waiting for Human
 
