@@ -160,3 +160,55 @@ def test_sign_divergence_report_accepts_canonical_bytes_ducktype() -> None:
     envelope = signer.sign_divergence_report(_FakeReport(), baseline, candidate)
 
     assert verify_divergence_report(envelope, baseline, candidate, public_key) is True
+
+
+# -- Issue #376: PAE covers source-bundle digests -----------------------------
+
+
+def test_pae_bytes_contains_source_digests() -> None:
+    """The pre-auth encoding must embed both source-bundle digests verbatim."""
+    signer, public_key = BundleSigner.generate()
+    baseline = _bundle("run-baseline", 0)
+    candidate = _bundle("run-candidate", 1)
+    envelope = signer.sign_divergence_report(_report_mapping(), baseline, candidate)
+
+    pae = envelope.pae_bytes()
+    assert pae.startswith(b"DSSEv1")
+    # Both digests must appear in the PAE so the signature is bound to them.
+    assert baseline.digest().encode() in pae
+    assert candidate.digest().encode() in pae
+
+
+def test_pae_digest_binding_tampered_digest_fails_verification() -> None:
+    """Tampering with source_digests after signing must break verification."""
+    signer, public_key = BundleSigner.generate()
+    baseline = _bundle("run-baseline", 0)
+    candidate = _bundle("run-candidate", 1)
+    envelope = signer.sign_divergence_report(_report_mapping(), baseline, candidate)
+
+    assert verify_divergence_report(envelope, baseline, candidate, public_key) is True
+
+    # Corrupt the baseline digest in the envelope.
+    envelope.source_digests["baseline"] = "00" * 32
+    assert verify_divergence_report(envelope, baseline, candidate, public_key) is False
+
+
+def test_pae_digest_binding_different_order_in_pae() -> None:
+    """Swapping baseline/candidate in source_digests must invalidate the signature.
+
+    Because the PAE encodes baseline then candidate in fixed order,
+    swapping their positions produces different PAE bytes.
+    """
+    signer, public_key = BundleSigner.generate()
+    baseline = _bundle("run-baseline", 0)
+    candidate = _bundle("run-candidate", 1)
+    envelope = signer.sign_divergence_report(_report_mapping(), baseline, candidate)
+
+    assert verify_divergence_report(envelope, baseline, candidate, public_key) is True
+
+    # Swap the digests in the envelope — PAE will no longer match the signature.
+    orig_baseline = envelope.source_digests["baseline"]
+    orig_candidate = envelope.source_digests["candidate"]
+    envelope.source_digests["baseline"] = orig_candidate
+    envelope.source_digests["candidate"] = orig_baseline
+    assert verify_divergence_report(envelope, baseline, candidate, public_key) is False
