@@ -3,16 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..anomaly.detector import AnomalySignal, StatisticalAnomalyDetector
-from ..collector.flight_recorder import CollectiveEvent
+from ..collector.flight_recorder import CollectiveEvent, load_flight_recorder
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import AEPRecord, EpochEvidenceBundle
 from ..recording.modes import RecordingMode
+from ..recording.recorder import EpochRecorder
+from .types import DivergenceReport
 
 if TYPE_CHECKING:
     from ..graph.collision import CollisionDetector, CollisionReport
+
+# Number of action records on either side of the first divergence captured
+# in a :class:`DivergenceReport`'s ``context_window``.
+_DIFF_CONTEXT_WINDOW = 2
 
 
 @dataclass
@@ -147,6 +154,137 @@ class EpochReplayer:
         detector = StatisticalAnomalyDetector(z_threshold=z_threshold)
         signals = detector.detect(bundle.actions)
         return sorted(signals, key=lambda s: s.severity, reverse=True)
+
+    def replay_diff(
+        self,
+        baseline_dump: str,
+        candidate_dump: str,
+    ) -> dict[int, DivergenceReport]:
+        """Compare two Flight Recorder dumps rank-by-rank and report divergences.
+
+        Loads both dumps, records an :class:`EpochEvidenceBundle` for each,
+        then walks the rank-aligned action streams pairwise. The first step at
+        which a rank's baseline and candidate actions disagree is captured in
+        a :class:`DivergenceReport` alongside an N-step context window on
+        either side. Byte-identical dumps yield an empty ``dict`` (no
+        divergence); a report is only emitted for ranks that disagree.
+
+        .. note::
+           Collision and escalation correlation (``correlated_collision`` /
+           ``correlated_escalation``) is populated by separate Milestone 6
+           bullets; this method leaves those fields at their defaults.
+        """
+        baseline_bundle = self._load_bundle(baseline_dump)
+        candidate_bundle = self._load_bundle(candidate_dump)
+
+        baseline_by_rank = self._group_actions_by_rank(baseline_bundle)
+        candidate_by_rank = self._group_actions_by_rank(candidate_bundle)
+
+        reports: dict[int, DivergenceReport] = {}
+        for rank in sorted(set(baseline_by_rank) | set(candidate_by_rank)):
+            report = self._first_divergence(
+                rank,
+                baseline_by_rank.get(rank, []),
+                candidate_by_rank.get(rank, []),
+            )
+            if report is not None:
+                reports[rank] = report
+        return reports
+
+    @staticmethod
+    def _load_bundle(dump_path: str) -> EpochEvidenceBundle:
+        """Load a Flight Recorder dump and record it into an evidence bundle."""
+        events = load_flight_recorder(Path(dump_path))
+        recorder = EpochRecorder(run_id="replay-diff", epoch=0)
+        for evt in events:
+            recorder.record_collective(evt)
+        return recorder.bundle()
+
+    @staticmethod
+    def _group_actions_by_rank(
+        bundle: EpochEvidenceBundle,
+    ) -> dict[int, list[AEPRecord]]:
+        grouped: dict[int, list[AEPRecord]] = {}
+        for action in bundle.actions:
+            grouped.setdefault(action.rank, []).append(action)
+        for actions in grouped.values():
+            actions.sort(key=lambda a: a.step)
+        return grouped
+
+    @staticmethod
+    def _actions_agree(a: AEPRecord, b: AEPRecord) -> bool:
+        """True if two records represent the same replayed action.
+
+        Compares replay-meaningful fields (step, collective type, recording
+        mode, tensor digests, delta stats). ``action_id`` and ``timestamp_ns``
+        are intentionally excluded: they identify or locate a record but do
+        not change what the replayed computation did.
+        """
+        return (
+            a.step == b.step
+            and a.collective_type == b.collective_type
+            and a.recording_mode == b.recording_mode
+            and a.tensor_input_digest == b.tensor_input_digest
+            and a.tensor_output_digest == b.tensor_output_digest
+            and a.delta_stats == b.delta_stats
+        )
+
+    @staticmethod
+    def _missing_record(rank: int, step: int) -> AEPRecord:
+        """Sentinel marking an action present in one stream but not the other."""
+        return AEPRecord(
+            action_id=f"r{rank}:seq{step}:missing",
+            rank=rank,
+            step=step,
+            collective_type="<missing>",
+            recording_mode=RecordingMode.VALIDATION,
+        )
+
+    @staticmethod
+    def _first_divergence(
+        rank: int,
+        baseline: list[AEPRecord],
+        candidate: list[AEPRecord],
+    ) -> DivergenceReport | None:
+        """Locate the first step where the two rank-aligned streams disagree."""
+        common = min(len(baseline), len(candidate))
+        for i in range(common):
+            if not EpochReplayer._actions_agree(baseline[i], candidate[i]):
+                return EpochReplayer._build_divergence_report(rank, i, baseline, candidate)
+        if len(baseline) != len(candidate):
+            # Common prefix agrees but one stream has extra trailing actions.
+            return EpochReplayer._build_divergence_report(rank, common, baseline, candidate)
+        return None
+
+    @staticmethod
+    def _build_divergence_report(
+        rank: int,
+        index: int,
+        baseline: list[AEPRecord],
+        candidate: list[AEPRecord],
+    ) -> DivergenceReport:
+        baseline_action = (
+            baseline[index]
+            if index < len(baseline)
+            else EpochReplayer._missing_record(rank, candidate[index].step)
+        )
+        candidate_action = (
+            candidate[index]
+            if index < len(candidate)
+            else EpochReplayer._missing_record(rank, baseline[index].step)
+        )
+        # Context window: N actions on either side of the divergence, drawn
+        # from the baseline stream (the reference run).
+        start = max(0, index - _DIFF_CONTEXT_WINDOW)
+        end = index + 1 + _DIFF_CONTEXT_WINDOW
+        window = [*baseline[start:index], *baseline[index + 1 : end]]
+        return DivergenceReport(
+            rank=rank,
+            first_divergence_step=baseline_action.step,
+            baseline_action=baseline_action,
+            candidate_action=candidate_action,
+            context_window=window,
+        )
 
     @staticmethod
     def _record_to_collective_event(record: AEPRecord) -> CollectiveEvent:
