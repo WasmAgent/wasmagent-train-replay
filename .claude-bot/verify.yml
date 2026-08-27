@@ -7,10 +7,15 @@
 # The venv is placed on a large shared disk when available (mounted at
 # /mnt/bigdisk) and falls back to a local .venv-local otherwise, so a mount
 # outage degrades gracefully instead of hanging the install gate.
+#
+# REPO_SLUG is injected by the bot runner (verifymanifest.augmentEnv). When
+# running inside a gate worktree (.gate-<ts>/), the runner resolves the slug
+# from the parent directory so the bigdisk venv is always reused rather than
+# rebuilt from scratch on every merge-gate run.
 commands:
   - name: install
     cmd: >-
-      SLUG=$(basename "$PWD");
+      SLUG=${REPO_SLUG:-$(basename "$PWD")};
       if timeout 8 bash -c "test -d /mnt/bigdisk/venv && touch /mnt/bigdisk/venv/.probe-$SLUG 2>/dev/null && rm -f /mnt/bigdisk/venv/.probe-$SLUG" 2>/dev/null;
       then VENV=/mnt/bigdisk/venv/$SLUG; echo "[venv] bigdisk: $VENV";
       else VENV="$PWD/.venv-local"; echo "[venv] local fallback: $VENV"; fi;
