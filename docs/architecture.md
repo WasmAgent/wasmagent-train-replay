@@ -332,6 +332,71 @@ to escalate evidence capture for anomalous collectives.
 - **CLI**: The `train-replay anomaly` subcommand orchestrates the full
 pipeline end-to-end: load a profile, scan a dump, optionally notify.
 
+## Differential Replay (cross-run divergence analysis)
+
+Milestone 6 adds a pairwise comparison path that answers: *did two replays of
+the same epoch produce identical collective streams, and if not, where and
+why?*
+
+```
+Flight Recorder dump (baseline)    Flight Recorder dump (candidate)
+            │                                  │
+            ▼                                  ▼
+   rank-aligned AEPRecord streams (EpochReplayer.replay_diff)
+            │                                  │
+            └──────────────┬───────────────────┘
+                           ▼
+        ┌──────────────────────────────────────────────┐
+        │ replay/diff.py  DivergenceReplayer.diff()    │
+        │  · walks step-aligned actions per rank       │
+        │  · locates the first disagreeing step        │
+        │  · correlates collision_report desyncs and   │
+        │    EscalationSignals at that step            │
+        └──────────────────────┬───────────────────────┘
+                               ▼
+                 DivergenceReport (per divergent rank)
+           first_divergence_step · divergences[] ·
+           per_rank_similarity · summary
+                               │
+                               ▼
+        signing/signer.py  BundleSigner.sign_divergence_report()
+           DSSE envelope bound to both source bundles' digests
+```
+
+### Comparison semantics
+
+Two actions *agree* when their `collective_type` and `recording_mode` match
+and their tensor input/output digests match (digests participate only when
+both sides carry them). The first disagreeing — or one-side-missing — step is
+the rank's `first_divergence_step`; identical streams yield `None` and a
+similarity of `1.0`. A context window of surrounding baseline steps is
+attached to each divergence for root-cause context.
+
+### Correlation with collisions and escalation signals
+
+When a rank's `first_divergence_step` falls on a step reported in that rank's
+`ReplayResult.collision_report` (a cross-rank desync), the divergence is
+emitted with `correlated_collision=True` and the matching synthetic desync
+`AEPRecord` is attached — the divergence is not merely local, the ranks
+disagree with each other. An `EscalationSignal` overlapping the divergence
+populates `correlated_escalation` with `metric_name=severity`.
+
+### Entry points
+
+- **Python API**: `EpochReplayer.replay_diff(baseline_dump, candidate_dump)`
+  returns one `DivergenceReport` per divergent rank (empty `dict` when the
+  dumps agree); `DivergenceReplayer.diff()` operates on two `ReplayResult`
+  objects directly.
+- **CLI**: `train-replay diff BASELINE CANDIDATE [--rank N] [--context N]
+  [--output PATH]` prints the JSON report and exits non-zero when any
+  divergence is found (CI-friendly).
+- **Audit trail**: `sign_divergence_report()` produces a DSSE envelope over
+  both source bundles' digests, verifiable with `verify_divergence_report()`.
+
+See [regression-analysis.md](regression-analysis.md) for a worked example and
+[protocol.md](protocol.md) for the `Divergence` / `DivergenceReport` field
+reference.
+
 ## Cross-environment compatibility
 
 The PROV-DM graph format and the `RecordingMode` semantics are shared with

@@ -50,7 +50,10 @@ def main() -> None:
     with open(out, "wb") as f:
         pickle.dump(data, f)
 
-    print(f"Generated {out} with {len(entries)} collective events across {ranks} ranks, {steps} steps each.")
+    print(
+        f"Generated {out} with {len(entries)} collective events "
+        f"across {ranks} ranks, {steps} steps each."
+    )
 
 
 if __name__ == "__main__":

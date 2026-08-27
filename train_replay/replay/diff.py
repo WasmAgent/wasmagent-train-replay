@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..graph.collision import Collision, CollisionReport
 from ..recording.escalation import EscalationSignal
 from ..recording.evidence import AEPRecord
+from ..recording.modes import RecordingMode
 from .replayer import ReplayResult
 from .types import Divergence, DivergenceReport
 
@@ -52,46 +54,54 @@ class DivergenceReplayer:
         )
 
         divergences: list[Divergence] = []
-        first_divergence_step = 0
+        first_divergence_step: int | None = None
+        collision_by_step = _collisions_by_step(
+            baseline.collision_report, candidate.collision_report
+        )
 
         for step in all_steps:
             b_action = baseline_by_step.get(step)
             c_action = candidate_by_step.get(step)
+            collision_hit, collision_rec = _collision_correlation(
+                collision_by_step, step, baseline.rank
+            )
 
             if b_action is None or c_action is None:
                 # One stream has an action the other doesn't — that's a divergence.
-                div_step = step
-                if not divergences:
-                    first_divergence_step = div_step
+                if first_divergence_step is None:
+                    first_divergence_step = step
 
                 # Use a placeholder AEPRecord for the missing side.
                 missing = _missing_record(baseline.rank, step)
                 div = Divergence(
                     rank=baseline.rank,
-                    first_divergence_step=div_step,
+                    first_divergence_step=step,
                     baseline_action=b_action if b_action is not None else missing,
                     candidate_action=c_action if c_action is not None else missing,
                     context_window=self._context_window(
                         all_steps, step, baseline_by_step, candidate_by_step
                     ),
+                    correlated_collision=collision_hit,
+                    collision_record=collision_rec,
                     correlated_escalation=_correlate_escalation(escalation_signals),
                 )
                 divergences.append(div)
                 break
 
             if not _actions_agree(b_action, c_action):
-                div_step = step
-                if not divergences:
-                    first_divergence_step = div_step
+                if first_divergence_step is None:
+                    first_divergence_step = step
 
                 div = Divergence(
                     rank=baseline.rank,
-                    first_divergence_step=div_step,
+                    first_divergence_step=step,
                     baseline_action=b_action,
                     candidate_action=c_action,
                     context_window=self._context_window(
                         all_steps, step, baseline_by_step, candidate_by_step
                     ),
+                    correlated_collision=collision_hit,
+                    collision_record=collision_rec,
                     correlated_escalation=_correlate_escalation(escalation_signals),
                 )
                 divergences.append(div)
@@ -142,12 +152,23 @@ class DivergenceReplayer:
 # ---------------------------------------------------------------------------
 
 def _actions_agree(a: AEPRecord, b: AEPRecord) -> bool:
-    """Two actions agree if they have the same collective_type and recording_mode."""
-    return a.collective_type == b.collective_type and a.recording_mode == b.recording_mode
+    """Two actions agree if type, mode and tensor digests all match.
+
+    Tensor digests participate only when both sides carry them, so streams
+    recorded without digests keep comparing on collective metadata alone,
+    while a mutated tensor value on one side is flagged as a divergence.
+    """
+    if a.collective_type != b.collective_type or a.recording_mode != b.recording_mode:
+        return False
+    for attr in ("tensor_input_digest", "tensor_output_digest"):
+        a_digest = getattr(a, attr)
+        b_digest = getattr(b, attr)
+        if a_digest is not None and b_digest is not None and a_digest != b_digest:
+            return False
+    return True
 
 
 def _missing_record(rank: int, step: int) -> AEPRecord:
-    from ..recording.modes import RecordingMode
     return AEPRecord(
         action_id=f"missing-rank{rank}-step{step}",
         rank=rank,
@@ -165,3 +186,56 @@ def _correlate_escalation(
         return None
     s = signals[0]
     return f"{s.metric_name}={s.severity}"
+
+
+def _collisions_by_step(
+    baseline_report: CollisionReport | None,
+    candidate_report: CollisionReport | None,
+) -> dict[int, Collision]:
+    """Index collisions from either side's report by the step they occurred at.
+
+    When both sides report a collision at the same step the baseline's entry
+    wins — the two describe the same desync.
+    """
+    by_step: dict[int, Collision] = {}
+    for report in (baseline_report, candidate_report):
+        if report is None:
+            continue
+        for collision in report.collisions:
+            by_step.setdefault(collision.step, collision)
+    return by_step
+
+
+def _collision_correlation(
+    collision_by_step: dict[int, Collision],
+    divergence_step: int,
+    rank: int,
+) -> tuple[bool, AEPRecord | None]:
+    """Correlate a divergence step with a reported desync collision.
+
+    A collision correlates when it happened at the divergence step and
+    involved *rank* (on either side of the desync pair).  Returns the
+    ``correlated_collision`` flag and the matching synthetic desync
+    ``AEPRecord`` (or ``(False, None)``).
+    """
+    collision = collision_by_step.get(divergence_step)
+    if collision is None or rank not in (collision.rank_a, collision.rank_b):
+        return False, None
+    return True, _desync_record(collision)
+
+
+def _desync_record(collision: Collision) -> AEPRecord:
+    """Build the synthetic desync :class:`AEPRecord` for a collision.
+
+    Mirrors the records :meth:`EpochReplayer.suspicious_actions` synthesizes
+    so callers see one uniform shape.
+    """
+    return AEPRecord(
+        action_id=f"desync-r{collision.rank_a}-r{collision.rank_b}-s{collision.step}",
+        rank=collision.rank_a,
+        step=collision.step,
+        collective_type="desync",
+        recording_mode=RecordingMode.FULL,
+        delta_stats={"rank_b": float(collision.rank_b)},
+        causal_chain_id=collision.detail,
+    )

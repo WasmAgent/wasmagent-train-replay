@@ -654,3 +654,90 @@ def test_anomaly_command_skips_notify_when_clean(
     assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
     assert "0 anomalies" in result.output
     assert "Slack notification skipped" in result.output
+
+
+# ---------------------------------------------------------------------------
+# `train-replay diff` subcommand tests (issue #363)
+# ---------------------------------------------------------------------------
+
+
+def _diff_entry(rank: int, step: int, collective_type: str = "all_reduce") -> dict[str, object]:
+    started = 1_000_000 + step * 1_000
+    return {
+        "rank": rank,
+        "pg_name": "default",
+        "collective_seq": collective_type,
+        "p2p_src": None,
+        "p2p_dst": None,
+        "input_sizes": [[4096]],
+        "time_created_ns": started,
+        "time_started_ns": started,
+        "time_finished_ns": started + 100,
+        "frames": [],
+        "seq_id": step,
+    }
+
+
+def test_diff_command_identical_dumps_exit_zero(tmp_path: Path) -> None:
+    """Byte-identical dumps yield no divergence and the diff CLI exits 0."""
+    baseline = tmp_path / "baseline.pkl"
+    candidate = tmp_path / "candidate.pkl"
+    _write_anomaly_trace(baseline, [_diff_entry(0, s) for s in range(3)])
+    _write_anomaly_trace(candidate, [_diff_entry(0, s) for s in range(3)])
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["diff", str(baseline), str(candidate)])
+    assert result.exit_code == 0, f"Exit {result.exit_code}: {result.output}"
+    assert "No divergence detected" in result.output
+
+
+def test_diff_command_exits_nonzero_and_emits_json_on_divergence(tmp_path: Path) -> None:
+    """A divergent rank is reported as JSON and the CLI exits 1 (CI-friendly)."""
+    candidate_entries = [_diff_entry(0, s) for s in range(3)]
+    candidate_entries[1]["collective_seq"] = "all_gather"  # diverge at step 1
+
+    baseline = tmp_path / "baseline.pkl"
+    candidate = tmp_path / "candidate.pkl"
+    _write_anomaly_trace(baseline, [_diff_entry(0, s) for s in range(3)])
+    _write_anomaly_trace(candidate, candidate_entries)
+    output_path = tmp_path / "report.json"
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["diff", str(baseline), str(candidate), "--output", str(output_path)],
+    )
+    assert result.exit_code == 1, f"Exit {result.exit_code}: {result.output}"
+    assert "1 rank(s) diverged" in result.output
+
+    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    assert set(payload) == {"0"}
+    assert payload["0"]["first_divergence_step"] == 1
+    divergence = payload["0"]["divergences"][0]
+    assert divergence["baseline_action"]["collective_type"] == "all_reduce"
+    assert divergence["candidate_action"]["collective_type"] == "all_gather"
+
+
+def test_diff_command_rank_filter_can_clear_a_divergence(tmp_path: Path) -> None:
+    """--rank restricts the comparison; a filtered-out divergence exits 0."""
+    entries_r0 = [_diff_entry(0, s) for s in range(3)]
+    entries_r1 = [_diff_entry(1, s) for s in range(3)]
+    divergent_r1 = [_diff_entry(1, s, "all_gather" if s == 1 else "all_reduce") for s in range(3)]
+
+    baseline = tmp_path / "baseline.pkl"
+    candidate = tmp_path / "candidate.pkl"
+    _write_anomaly_trace(baseline, entries_r0 + entries_r1)
+    _write_anomaly_trace(candidate, entries_r0 + divergent_r1)
+
+    runner = CliRunner()
+    filtered = runner.invoke(
+        cli, ["diff", str(baseline), str(candidate), "--rank", "0"]
+    )
+    assert filtered.exit_code == 0, f"Exit {filtered.exit_code}: {filtered.output}"
+    assert "No divergence detected" in filtered.output
+
+    targeted = runner.invoke(
+        cli, ["diff", str(baseline), str(candidate), "--rank", "1"]
+    )
+    assert targeted.exit_code == 1
+    assert "1 rank(s) diverged" in targeted.output
