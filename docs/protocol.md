@@ -163,6 +163,47 @@ not its raw storage.
 
 ---
 
+## Divergence
+
+One per-rank divergence between a baseline and a candidate replay. Defined in
+`train_replay/replay/types.py`; produced by `DivergenceReplayer.diff()` (see
+[architecture.md § Differential Replay](architecture.md#differential-replay-cross-run-divergence-analysis)
+and [regression-analysis.md](regression-analysis.md)). Replay-side comparison
+output — not part of the evidence bundle.
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `rank` | `int` | *(required)* | Rank whose action streams disagree. |
+| `first_divergence_step` | `int` | *(required)* | First step at which the streams disagree. |
+| `baseline_action` | `AEPRecord` | *(required)* | Baseline-side action at the divergence step. |
+| `candidate_action` | `AEPRecord` | *(required)* | Candidate-side action at the divergence step. |
+| `context_window` | `list[AEPRecord]` | `[]` | Surrounding baseline steps around the divergence. |
+| `correlated_collision` | `bool` | `False` | `True` when the divergence step falls on a desync reported by that rank's `collision_report`. |
+| `correlated_escalation` | `str \| None` | `None` | `metric_name=severity` of an overlapping `EscalationSignal`. |
+| `collision_record` | `AEPRecord \| None` | `None` | The matching synthetic desync `AEPRecord` when `correlated_collision` is `True` (id format `desync-r{a}-r{b}-s{step}`). |
+
+---
+
+## DivergenceReport
+
+Cross-run aggregate for one rank, mirroring `EpochEvidenceBundle`'s
+serialization pair (`to_json()`/`from_json()`, `to_cbor()`/`from_cbor()`).
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `first_divergence_step` | `int \| None` | `None` | First divergent step for the rank; `None` when the compared streams are identical. |
+| `divergences` | `list[Divergence]` | `[]` | Per-divergence detail (one entry per compared divergence point). |
+| `per_rank_similarity` | `dict[int, float]` | `{}` | Fraction of steps that agreed, keyed by rank (`1.0` = identical). |
+| `summary` | `str` | `""` | Human-readable one-liner, e.g. `Rank 1 diverged at step 42`. |
+
+`EpochReplayer.replay_diff(baseline_dump, candidate_dump)` returns
+`dict[int, DivergenceReport]` keyed by divergent rank (empty when the dumps
+agree). `BundleSigner.sign_divergence_report()` wraps a report in a DSSE
+envelope bound to both source bundles' digests (see
+[Signature envelope](#signature-envelope)).
+
+---
+
 ## Control enums
 
 Shared by the recording layer. Defined in `train_replay/recording/modes.py`.

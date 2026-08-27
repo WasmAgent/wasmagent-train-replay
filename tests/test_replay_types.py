@@ -100,7 +100,8 @@ def test_divergence_context_window_default_is_per_instance() -> None:
 def test_divergence_report_default_fields() -> None:
     report = DivergenceReport()
 
-    assert report.first_divergence_step == 0
+    # None — "no divergence observed" — until a diff populates it (#351).
+    assert report.first_divergence_step is None
     assert report.divergences == []
     assert report.per_rank_similarity == {}
     assert report.summary == ""

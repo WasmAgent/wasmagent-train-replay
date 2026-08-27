@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..anomaly.detector import AnomalySignal, StatisticalAnomalyDetector
@@ -10,6 +11,7 @@ from ..collector.flight_recorder import CollectiveEvent
 from ..graph.prov_graph import ProvGraph
 from ..recording.evidence import AEPRecord, EpochEvidenceBundle
 from ..recording.modes import RecordingMode
+from .types import DivergenceReport
 
 if TYPE_CHECKING:
     from ..graph.collision import CollisionDetector, CollisionReport
@@ -123,6 +125,66 @@ class EpochReplayer:
             collision_report=collision_report,
         )
 
+    def replay_diff(
+        self,
+        baseline_dump: str,
+        candidate_dump: str,
+        context_window_size: int = 5,
+    ) -> dict[int, DivergenceReport]:
+        """Compare two Flight Recorder dumps rank-by-rank and report divergences.
+
+        Loads both dumps, maps the rank-aligned action streams pairwise and
+        delegates to :class:`DivergenceReplayer`.  When a
+        :class:`CollisionDetector` was configured at construction time it runs
+        over each side's full multi-rank timeline and the resulting desyncs are
+        attached to the owning rank's comparison, so a divergence that lands on
+        a desync step is reported with ``correlated_collision=True``.
+
+        Returns:
+            A report per divergent rank, keyed by rank.  Byte-identical dumps
+            yield an empty dict.
+        """
+        from ..collector.flight_recorder import load_flight_recorder
+        from .diff import DiffConfig, DivergenceReplayer
+
+        baseline_events = load_flight_recorder(Path(baseline_dump))
+        candidate_events = load_flight_recorder(Path(candidate_dump))
+
+        baseline_by_rank = _records_by_rank(baseline_events)
+        candidate_by_rank = _records_by_rank(candidate_events)
+
+        baseline_collisions: dict[int, CollisionReport] = {}
+        candidate_collisions: dict[int, CollisionReport] = {}
+        if self._detector is not None:
+            baseline_collisions = _collisions_by_rank(
+                self._detector.detect(_group_by_rank(baseline_events))
+            )
+            candidate_collisions = _collisions_by_rank(
+                self._detector.detect(_group_by_rank(candidate_events))
+            )
+
+        differ = DivergenceReplayer(DiffConfig(context_window_size=context_window_size))
+        reports: dict[int, DivergenceReport] = {}
+        for rank in sorted(set(baseline_by_rank) | set(candidate_by_rank)):
+            baseline_result = ReplayResult(
+                epoch=0,
+                rank=rank,
+                causal_ancestors=[],
+                suspicious_actions=baseline_by_rank.get(rank, []),
+                collision_report=baseline_collisions.get(rank),
+            )
+            candidate_result = ReplayResult(
+                epoch=0,
+                rank=rank,
+                causal_ancestors=[],
+                suspicious_actions=candidate_by_rank.get(rank, []),
+                collision_report=candidate_collisions.get(rank),
+            )
+            report = differ.diff(baseline_result, candidate_result)
+            if report.divergences:
+                reports[rank] = report
+        return reports
+
     def anomaly_scan(
         self,
         bundle: EpochEvidenceBundle,
@@ -162,3 +224,59 @@ class EpochReplayer:
             end_time_ns=record.timestamp_ns,
             sequence_id=record.step,
         )
+
+
+# ---------------------------------------------------------------------------
+# Module-level helpers for replay_diff
+# ---------------------------------------------------------------------------
+
+def _group_by_rank(
+    events: list[CollectiveEvent],
+) -> dict[int, list[CollectiveEvent]]:
+    """Group Flight Recorder events into per-rank timelines."""
+    grouped: dict[int, list[CollectiveEvent]] = {}
+    for evt in events:
+        grouped.setdefault(evt.rank, []).append(evt)
+    return grouped
+
+
+def _records_by_rank(
+    events: list[CollectiveEvent],
+) -> dict[int, list[AEPRecord]]:
+    """Map Flight Recorder events to per-rank ``AEPRecord`` action streams."""
+    grouped: dict[int, list[AEPRecord]] = {}
+    for evt in events:
+        grouped.setdefault(evt.rank, []).append(_event_to_record(evt))
+    return grouped
+
+
+def _event_to_record(evt: CollectiveEvent) -> AEPRecord:
+    """Map one Flight Recorder event to its replay-side ``AEPRecord``."""
+    return AEPRecord(
+        action_id=f"evt-r{evt.rank}-s{evt.sequence_id}",
+        rank=evt.rank,
+        step=evt.sequence_id,
+        collective_type=evt.collective_type,
+        recording_mode=RecordingMode.FULL,
+        timestamp_ns=evt.start_time_ns,
+    )
+
+
+def _collisions_by_rank(
+    report: CollisionReport,
+) -> dict[int, CollisionReport]:
+    """Split a collision report into per-rank reports.
+
+    Each collision is attributed to both ranks of the desync pair, so every
+    rank's diff sees the desyncs it participated in.
+    """
+    from ..graph.collision import CollisionReport as _CollisionReport
+
+    by_rank: dict[int, CollisionReport] = {}
+    for collision in report.collisions:
+        for rank in {collision.rank_a, collision.rank_b}:
+            rank_report = by_rank.setdefault(
+                rank, _CollisionReport(total_steps_checked=report.total_steps_checked)
+            )
+            rank_report.collisions.append(collision)
+    return by_rank

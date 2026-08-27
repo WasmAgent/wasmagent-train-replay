@@ -26,6 +26,9 @@ Contents:
 - [`train-replay ingest`](#train-replay-ingest)
 - [`train-replay trace`](#train-replay-trace)
 - [`train-replay record`](#train-replay-record)
+- [`train-replay diff`](#train-replay-diff)
+- [`train-replay anomaly`](#train-replay-anomaly)
+- [Other commands](#other-commands)
 - [Planned `train-replay export`](#planned-train-replay-export)
 
 ## Global
@@ -159,6 +162,106 @@ DSSE-style Ed25519 signature envelope.
 ```bash
 train-replay record path/to/nccl_trace.pkl --run-id my-run --epoch 5
 ```
+
+## `train-replay diff`
+
+Compare two Flight Recorder dumps rank-by-rank and report divergences
+(Milestone 6, cross-run regression analysis).
+
+### Usage
+
+```
+train-replay diff [OPTIONS] BASELINE_DUMP CANDIDATE_DUMP
+```
+
+### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `BASELINE_DUMP` | path (must exist) | yes | Reference Flight Recorder pickle dump. |
+| `CANDIDATE_DUMP` | path (must exist) | yes | Candidate dump compared against the baseline. |
+
+### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--rank`, `-r` | `int` | *(all ranks)* | Restrict the comparison to a single rank. |
+| `--context` | `int` | `10` | Context window size (in steps) around each divergence. |
+| `--output` | path | *(stdout only)* | Additionally write the JSON report to this path. |
+
+### What it does
+
+1. Loads both dumps and delegates to `EpochReplayer.replay_diff()`, which maps
+   each side's rank-aligned action streams pairwise via `DivergenceReplayer`.
+2. Emits one JSON object keyed by divergent rank; each value is the
+   serialized `DivergenceReport` (`first_divergence_step`, `divergences`,
+   `per_rank_similarity`, `summary`).
+3. **Exit code**: exits `0` when the dumps agree and `1` when any divergence
+   was found — CI-friendly, so a regression job can fail on replay drift.
+
+### Example
+
+```bash
+# Fail CI when a candidate replay diverges from the baseline
+train-replay diff run_epoch5_baseline.pkl run_epoch5_candidate.pkl
+
+# Full report for rank 1 only, with a wider context window, saved to a file
+train-replay diff baseline.pkl candidate.pkl --rank 1 --context 20 --output report.json
+```
+
+## `train-replay anomaly`
+
+Batch-scan a Flight Recorder dump for statistical anomalies (Milestone 5).
+
+### Usage
+
+```
+train-replay anomaly [OPTIONS] DUMP_PATH
+```
+
+### Arguments
+
+| Argument | Type | Required | Description |
+|---|---|---|---|
+| `DUMP_PATH` | path (must exist) | yes | Flight Recorder pickle dump to scan. |
+
+### Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `--profile` | path | *(self-referential)* | JSON-serialised baseline `TrainingProfile`. When omitted, a baseline is derived from the dump itself. |
+| `--threshold` | `float` | `3.0` | Absolute Z-score above which an event is flagged as anomalous. |
+| `--notify` | `channel:target` | *(none)* | Alert target, e.g. `slack:<webhook_url>`; posts a summary when anomalies are found. |
+
+### What it does
+
+1. `load_flight_recorder(DUMP_PATH)` → `list[CollectiveEvent]`.
+2. Loads (or derives) the baseline `TrainingProfile`.
+3. Scans tensor sizes and per-rank inter-event intervals; flags events whose
+   Z-score exceeds `--threshold`, ranked by absolute Z-score.
+4. Renders a `rich` table of hits; when `--notify slack:...` is given, POSTs a
+   summary to the webhook (skipped when no anomalies were found).
+
+### Example
+
+```bash
+# Scan against a stored baseline profile and alert on findings
+train-replay anomaly path/to/nccl_trace.pkl \
+    --profile baseline_profile.json --threshold 3.0 \
+    --notify slack:https://hooks.slack.com/services/T/B/xxx
+```
+
+See [anomaly-guide.md](anomaly-guide.md) for profile creation and threshold
+tuning.
+
+## Other commands
+
+| Command | Purpose |
+|---|---|
+| `train-replay replay DUMP_PATH ENTITY_ID` | Replay a rank/epoch and print causal ancestors plus suspicious actions (see `--rank`, `--run-id`, `--epoch`). |
+| `train-replay agent-query DUMP_PATH --tool NAME --args JSON` | Dispatch an agent tool (`trace_tensor`) and print JSON. See [agent-integration.md](agent-integration.md). |
+| `train-replay resume` | Clear an active safe-mode lock. |
+| `train-replay admin safe-mode ...` | Inspect or toggle the profiler-overhead circuit breaker. |
 
 ## Planned `train-replay export`
 

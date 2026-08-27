@@ -239,6 +239,66 @@ def replay(
         console.print(info)
 
 
+@cli.command()
+@click.argument("baseline_dump", type=click.Path(exists=True))
+@click.argument("candidate_dump", type=click.Path(exists=True))
+@click.option("--rank", "-r", type=int, default=None, help="Restrict comparison to one rank")
+@click.option(
+    "--context",
+    "context_size",
+    type=int,
+    default=10,
+    show_default=True,
+    help="Context window size around each divergence step.",
+)
+@click.option(
+    "--output",
+    type=click.Path(),
+    default=None,
+    help="Write the JSON report to this path in addition to stdout.",
+)
+@click.pass_context
+def diff(
+    ctx: click.Context,
+    baseline_dump: str,
+    candidate_dump: str,
+    rank: int | None,
+    context_size: int,
+    output: str | None,
+) -> None:
+    """Compare two Flight Recorder dumps rank-by-rank and report divergences.
+
+    Prints one JSON object keyed by divergent rank.  Exits non-zero when any
+    divergence is found, so CI jobs can fail on replay drift.
+    """
+    from dataclasses import asdict
+
+    from train_replay.collector.flight_recorder import load_flight_recorder
+    from train_replay.graph.builder import build_from_events
+    from train_replay.replay.replayer import EpochReplayer
+
+    events = load_flight_recorder(Path(baseline_dump))
+    graph = build_from_events(events)
+    replayer = EpochReplayer(graph)
+
+    reports = replayer.replay_diff(
+        baseline_dump, candidate_dump, context_window_size=context_size
+    )
+    if rank is not None:
+        reports = {r: report for r, report in reports.items() if r == rank}
+
+    payload = {str(r): asdict(report) for r, report in sorted(reports.items())}
+    rendered = json.dumps(payload, sort_keys=True, default=str)
+    if output is not None:
+        Path(output).write_text(rendered, encoding="utf-8")
+    click.echo(rendered)
+
+    if reports:
+        console.print(f"[red]{len(reports)}[/red] rank(s) diverged")
+        ctx.exit(1)
+    console.print("[green]No divergence detected[/green]")
+
+
 # ---------------------------------------------------------------------------
 # `train-replay anomaly` — batch statistical anomaly scanning.
 #

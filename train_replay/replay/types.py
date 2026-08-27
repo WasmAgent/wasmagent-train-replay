@@ -32,6 +32,9 @@ class Divergence:
     context_window: list[AEPRecord] = field(default_factory=list)
     correlated_collision: bool = False
     correlated_escalation: str | None = None
+    # Populated when ``correlated_collision`` is True: the synthetic desync
+    # ``AEPRecord`` for the collision that overlaps the divergence step.
+    collision_record: AEPRecord | None = None
 
 
 @dataclass
@@ -43,7 +46,7 @@ class DivergenceReport:
     ``to_json()`` / ``to_cbor()`` serialization pair.
     """
 
-    first_divergence_step: int = 0
+    first_divergence_step: int | None = None
     divergences: list[Divergence] = field(default_factory=list)
     per_rank_similarity: dict[int, float] = field(default_factory=dict)
     summary: str = ""
@@ -89,8 +92,9 @@ class DivergenceReport:
 
         divergences_raw: list[dict[str, Any]] = d.get("divergences", [])
         divergences = [_divergence_from_dict(dr, RecordingMode) for dr in divergences_raw]
+        first_step = d.get("first_divergence_step")
         return cls(
-            first_divergence_step=d.get("first_divergence_step", 0),
+            first_divergence_step=int(first_step) if first_step is not None else None,
             divergences=divergences,
             per_rank_similarity={
                 int(k): v for k, v in d.get("per_rank_similarity", {}).items()
@@ -135,4 +139,9 @@ def _divergence_from_dict(
         ],
         correlated_collision=d.get("correlated_collision", False),
         correlated_escalation=d.get("correlated_escalation"),
+        collision_record=(
+            _aep_record_from_dict(d["collision_record"], mode_cls)
+            if d.get("collision_record") is not None
+            else None
+        ),
     )
