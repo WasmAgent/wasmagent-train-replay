@@ -130,8 +130,7 @@ class StatisticalAnomalyDetector(AnomalyDetector):
             rank = getattr(evt, "rank", 0)
             by_rank.setdefault(rank, []).append(evt)
 
-        intervals: list[float] = []
-        interval_map: dict[float, tuple[Any, Any]] = {}  # interval -> (prev, curr)
+        intervals: list[tuple[float, Any, Any]] = []  # (interval_ns, prev, curr)
         duplicate_pairs: list[tuple[Any, Any]] = []
 
         for rank_events in by_rank.values():
@@ -149,8 +148,7 @@ class StatisticalAnomalyDetector(AnomalyDetector):
                     # dropping.
                     duplicate_pairs.append((prev, curr))
                 elif iv > 0:
-                    intervals.append(iv)
-                    interval_map[iv] = (prev, curr)
+                    intervals.append((iv, prev, curr))
 
         # Emit signals for duplicate timestamps.
         for prev, curr in duplicate_pairs:
@@ -175,20 +173,18 @@ class StatisticalAnomalyDetector(AnomalyDetector):
 
         # Check for zero-variance intervals (frozen clock).
         try:
-            stdev_iv = statistics.stdev(intervals)
+            stdev_iv = statistics.stdev([iv for iv, _p, _c in intervals])
         except statistics.StatisticsError:
             stdev_iv = 0.0
 
         if stdev_iv == 0.0 and len(intervals) >= 3:
             # All intervals are identical — frozen clock, no variation.
             # Pick the last event as anchor for the signal.
-            _iv, (_prev, anchor_evt) = next(
-                reversed(list(interval_map.items()))
-            )
+            _iv, _prev, anchor_evt = intervals[-1]
             rank = getattr(anchor_evt, "rank", 0)
             step = getattr(anchor_evt, "step", 0)
             action_id = getattr(anchor_evt, "action_id", "")
-            mean_iv = statistics.mean(intervals)
+            mean_iv = statistics.mean([iv for iv, _p, _c in intervals])
             signals.append(AnomalySignal(
                 action_id=action_id,
                 rank=rank,
@@ -203,10 +199,9 @@ class StatisticalAnomalyDetector(AnomalyDetector):
             ))
             return signals
 
-        zscores = _zscore_list(intervals)
-        for iv, zs in zip(intervals, zscores):
+        zscores = _zscore_list([iv for iv, _p, _c in intervals])
+        for (iv, prev, curr), zs in zip(intervals, zscores):
             if zs is not None and abs(zs) > self._z_threshold:
-                prev, curr = interval_map[iv]
                 rank = getattr(curr, "rank", 0)
                 step = getattr(curr, "step", 0)
                 action_id = getattr(curr, "action_id", "")

@@ -7,6 +7,7 @@ Prometheus server present (queries are simply skipped).
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
 import urllib.error
@@ -116,11 +117,13 @@ def check_prometheus_readiness(cfg: PrometheusConfig | None = None) -> bool:
         req.add_header("Authorization", f"Bearer {cfg.bearer_token}")
 
     try:
-        resp = urllib.request.urlopen(req, timeout=cfg.timeout_seconds)
-        ok: bool = bool(resp.status == 200)
-        if not ok:
-            logger.warning("Prometheus /-/ready returned status %d", resp.status)
-        return ok
+        with contextlib.closing(
+            urllib.request.urlopen(req, timeout=cfg.timeout_seconds)
+        ) as resp:
+            status = int(getattr(resp, "status", 0))
     except (urllib.error.URLError, OSError) as exc:
         logger.warning("Prometheus readiness check failed: %s", exc)
         return False
+    if status != 200:
+        logger.warning("Prometheus /-/ready returned status %d", status)
+    return status == 200

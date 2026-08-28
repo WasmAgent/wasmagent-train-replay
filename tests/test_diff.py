@@ -158,9 +158,10 @@ def test_similarity_score_reflects_agreement_fraction() -> None:
     ]
     report = DivergenceReplayer().diff(_result(0, b_actions), _result(0, c_actions))
 
-    # 2 out of 3 steps agree before we stop at first divergence
-    # similarity = (3-1)/3 ≈ 0.6667 (we only stop at first divergence)
-    assert 0.0 < report.per_rank_similarity[0] <= 1.0
+    # Divergence at step 2 of steps {1,2,3}: only step 1 was verified to agree,
+    # so similarity is the verified-agreement prefix 1/3.
+    assert 0.0 < report.per_rank_similarity[0] < 1.0
+    assert report.per_rank_similarity[0] == 0.3333
 
 
 # -- tensor mutation at a known step (#351) -----------------------------------

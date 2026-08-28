@@ -104,3 +104,41 @@ def test_dict_with_non_list_entries_is_rejected(tmp_path: Path) -> None:
         pickle.dump({"entries": "not-a-list"}, f)
     with pytest.raises(UnsafeFlightRecorderDumpError):
         load_flight_recorder(trace)
+
+
+def test_non_dict_entry_is_rejected(tmp_path: Path) -> None:
+    """An 'entries' list containing a non-dict raises instead of AttributeError."""
+    trace = tmp_path / "trace.pkl"
+    with open(trace, "wb") as f:
+        pickle.dump({"entries": ["not-a-dict"]}, f)
+    with pytest.raises(UnsafeFlightRecorderDumpError):
+        load_flight_recorder(trace)
+
+
+def test_malformed_input_sizes_degrade_to_zero(tmp_path: Path) -> None:
+    """input_sizes that are missing / empty / nested-empty yield tensor_size 0."""
+    base = {
+        "rank": 0,
+        "pg_name": "default",
+        "collective_seq": "all_reduce",
+        "p2p_src": None,
+        "p2p_dst": None,
+        "time_created_ns": 1,
+        "time_started_ns": 2,
+        "time_finished_ns": 3,
+        "frames": [],
+        "seq_id": 0,
+    }
+    trace = tmp_path / "trace.pkl"
+    with open(trace, "wb") as f:
+        pickle.dump({"entries": [
+            {**base, "input_sizes": [[4096]]},  # well-formed
+            {**base, "seq_id": 1, "input_sizes": [[]]},  # empty inner list
+            {**base, "seq_id": 2, "input_sizes": []},  # empty outer list
+            {**base, "seq_id": 3},  # field absent
+            {**base, "seq_id": 4, "input_sizes": "garbage"},  # wrong type
+        ]}, f)
+
+    events = load_flight_recorder(trace)
+
+    assert [e.tensor_size for e in events] == [4096, 0, 0, 0, 0]

@@ -86,13 +86,18 @@ def load_flight_recorder(path: Path) -> list[CollectiveEvent]:
 
     events: list[CollectiveEvent] = []
     for entry in raw.get("entries", []):
+        if not isinstance(entry, dict):
+            raise UnsafeFlightRecorderDumpError(
+                "Flight recorder entries must be dicts of built-in scalars; "
+                f"got {type(entry).__name__}."
+            )
         events.append(CollectiveEvent(
             rank=entry.get("rank", 0),
             process_group=entry.get("pg_name", "default"),
             collective_type=entry.get("collective_seq", "unknown"),
             src_rank=entry.get("p2p_src", None),
             dst_rank=entry.get("p2p_dst", None),
-            tensor_size=entry.get("input_sizes", [[0]])[0][0] if entry.get("input_sizes") else 0,
+            tensor_size=_first_input_size(entry.get("input_sizes")),
             enqueue_time_ns=entry.get("time_created_ns", 0),
             start_time_ns=entry.get("time_started_ns", 0),
             end_time_ns=entry.get("time_finished_ns", 0),
@@ -100,3 +105,18 @@ def load_flight_recorder(path: Path) -> list[CollectiveEvent]:
             sequence_id=entry.get("seq_id", 0),
         ))
     return events
+
+
+def _first_input_size(input_sizes: Any) -> int:
+    """Extract the first tensor size from an ``input_sizes`` dump field.
+
+    The field is ``[[size], ...]``; malformed shapes (missing, empty, or
+    non-list) degrade to ``0`` instead of raising.
+    """
+    if not isinstance(input_sizes, list) or not input_sizes:
+        return 0
+    first = input_sizes[0]
+    if not isinstance(first, list) or not first:
+        return 0
+    size = first[0]
+    return size if isinstance(size, int) else 0

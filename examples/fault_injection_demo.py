@@ -95,9 +95,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         baseline_dump = write_dump(events, Path(tmp) / "baseline.pkl")
         candidate_dump = write_dump(candidate_events, Path(tmp) / "candidate.pkl")
-        reports = EpochReplayer(graph).replay_diff(
-            str(baseline_dump), str(candidate_dump)
-        )
+        reports = EpochReplayer().replay_diff(str(baseline_dump), str(candidate_dump))
 
     print("\nBefore/after divergence report:")
     for rank in sorted(reports):

@@ -27,11 +27,17 @@ class ReplayResult:
 
 
 class EpochReplayer:
-    """Replay evidence bundles to identify causal chains for anomalous tensors."""
+    """Replay evidence bundles to identify causal chains for anomalous tensors.
+
+    The causal graph is only required for :meth:`find_root_cause`; the
+    divergence-comparison entry points (:meth:`replay_diff`,
+    :meth:`diff_events`) accept ``graph=None`` so callers comparing two dumps
+    don't pay for graph construction.
+    """
 
     def __init__(
         self,
-        graph: ProvGraph,
+        graph: ProvGraph | None = None,
         detector: CollisionDetector | None = None,
     ) -> None:
         self._graph = graph
@@ -39,6 +45,11 @@ class EpochReplayer:
 
     def find_root_cause(self, entity_id: str) -> list[str]:
         """Return activity IDs that causally contributed to entity_id."""
+        if self._graph is None:
+            raise RuntimeError(
+                "EpochReplayer was constructed without a ProvGraph — "
+                "find_root_cause() requires one."
+            )
         return self._graph.ancestors_of(entity_id)
 
     def suspicious_actions(self, bundle: EpochEvidenceBundle) -> list[AEPRecord]:
@@ -131,24 +142,44 @@ class EpochReplayer:
         candidate_dump: str,
         context_window_size: int = 5,
     ) -> dict[int, DivergenceReport]:
-        """Compare two Flight Recorder dumps rank-by-rank and report divergences.
+        """Compare two Flight Recorder dump files rank-by-rank.
 
-        Loads both dumps, maps the rank-aligned action streams pairwise and
-        delegates to :class:`DivergenceReplayer`.  When a
-        :class:`CollisionDetector` was configured at construction time it runs
-        over each side's full multi-rank timeline and the resulting desyncs are
-        attached to the owning rank's comparison, so a divergence that lands on
-        a desync step is reported with ``correlated_collision=True``.
+        Convenience wrapper that loads both dumps and delegates to
+        :meth:`diff_events`.  Callers that already hold the parsed event lists
+        should call :meth:`diff_events` directly to avoid re-reading files.
 
         Returns:
             A report per divergent rank, keyed by rank.  Byte-identical dumps
             yield an empty dict.
         """
         from ..collector.flight_recorder import load_flight_recorder
-        from .diff import DiffConfig, DivergenceReplayer
 
-        baseline_events = load_flight_recorder(Path(baseline_dump))
-        candidate_events = load_flight_recorder(Path(candidate_dump))
+        return self.diff_events(
+            load_flight_recorder(Path(baseline_dump)),
+            load_flight_recorder(Path(candidate_dump)),
+            context_window_size=context_window_size,
+        )
+
+    def diff_events(
+        self,
+        baseline_events: list[CollectiveEvent],
+        candidate_events: list[CollectiveEvent],
+        context_window_size: int = 5,
+    ) -> dict[int, DivergenceReport]:
+        """Compare two rank-aligned event lists and report divergences.
+
+        Maps the rank-aligned action streams pairwise and delegates to
+        :class:`DivergenceReplayer`.  When a :class:`CollisionDetector` was
+        configured at construction time it runs over each side's full
+        multi-rank timeline and the resulting desyncs are attached to the
+        owning rank's comparison, so a divergence that lands on a desync step
+        is reported with ``correlated_collision=True``.
+
+        Returns:
+            A report per divergent rank, keyed by rank.  Identical streams
+            yield an empty dict.
+        """
+        from .diff import DiffConfig, DivergenceReplayer
 
         baseline_by_rank = _records_by_rank(baseline_events)
         candidate_by_rank = _records_by_rank(candidate_events)

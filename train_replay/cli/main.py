@@ -274,15 +274,14 @@ def diff(
     from dataclasses import asdict
 
     from train_replay.collector.flight_recorder import load_flight_recorder
-    from train_replay.graph.builder import build_from_events
     from train_replay.replay.replayer import EpochReplayer
 
-    events = load_flight_recorder(Path(baseline_dump))
-    graph = build_from_events(events)
-    replayer = EpochReplayer(graph)
+    baseline_events = load_flight_recorder(Path(baseline_dump))
+    candidate_events = load_flight_recorder(Path(candidate_dump))
 
-    reports = replayer.replay_diff(
-        baseline_dump, candidate_dump, context_window_size=context_size
+    replayer = EpochReplayer()
+    reports = replayer.diff_events(
+        baseline_events, candidate_events, context_window_size=context_size
     )
     if rank is not None:
         reports = {r: report for r, report in reports.items() if r == rank}

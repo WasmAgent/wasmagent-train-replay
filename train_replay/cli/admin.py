@@ -15,8 +15,14 @@ console = Console()
 
 
 @click.group()
-def admin() -> None:
+@click.pass_context
+def admin(ctx: click.Context) -> None:
     """Operator administration commands."""
+    # Keep the group usable when invoked outside the main CLI tree (where the
+    # root group would normally have created the shared obj).
+    ctx.ensure_object(dict)
+    if "safe_mode" not in ctx.obj:
+        ctx.obj["safe_mode"] = SafeMode()
 
 
 @admin.command(name="safe-mode")

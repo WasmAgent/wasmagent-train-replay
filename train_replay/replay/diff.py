@@ -59,58 +59,48 @@ class DivergenceReplayer:
             baseline.collision_report, candidate.collision_report
         )
 
+        agreed_steps = 0
         for step in all_steps:
             b_action = baseline_by_step.get(step)
             c_action = candidate_by_step.get(step)
+
+            if (
+                b_action is not None
+                and c_action is not None
+                and _actions_agree(b_action, c_action)
+            ):
+                agreed_steps += 1
+                continue
+
+            # First disagreement: an action missing on either side, or two
+            # actions that don't agree — that's a divergence.
+            if first_divergence_step is None:
+                first_divergence_step = step
+
             collision_hit, collision_rec = _collision_correlation(
                 collision_by_step, step, baseline.rank
             )
+            missing = _missing_record(baseline.rank, step)
+            div = Divergence(
+                rank=baseline.rank,
+                first_divergence_step=step,
+                baseline_action=b_action if b_action is not None else missing,
+                candidate_action=c_action if c_action is not None else missing,
+                context_window=self._context_window(
+                    all_steps, step, baseline_by_step, candidate_by_step
+                ),
+                correlated_collision=collision_hit,
+                collision_record=collision_rec,
+                correlated_escalation=_correlate_escalation(escalation_signals),
+            )
+            divergences.append(div)
+            break
 
-            if b_action is None or c_action is None:
-                # One stream has an action the other doesn't — that's a divergence.
-                if first_divergence_step is None:
-                    first_divergence_step = step
-
-                # Use a placeholder AEPRecord for the missing side.
-                missing = _missing_record(baseline.rank, step)
-                div = Divergence(
-                    rank=baseline.rank,
-                    first_divergence_step=step,
-                    baseline_action=b_action if b_action is not None else missing,
-                    candidate_action=c_action if c_action is not None else missing,
-                    context_window=self._context_window(
-                        all_steps, step, baseline_by_step, candidate_by_step
-                    ),
-                    correlated_collision=collision_hit,
-                    collision_record=collision_rec,
-                    correlated_escalation=_correlate_escalation(escalation_signals),
-                )
-                divergences.append(div)
-                break
-
-            if not _actions_agree(b_action, c_action):
-                if first_divergence_step is None:
-                    first_divergence_step = step
-
-                div = Divergence(
-                    rank=baseline.rank,
-                    first_divergence_step=step,
-                    baseline_action=b_action,
-                    candidate_action=c_action,
-                    context_window=self._context_window(
-                        all_steps, step, baseline_by_step, candidate_by_step
-                    ),
-                    correlated_collision=collision_hit,
-                    collision_record=collision_rec,
-                    correlated_escalation=_correlate_escalation(escalation_signals),
-                )
-                divergences.append(div)
-                break
-
-        # Similarity: fraction of steps that agree.
+        # Similarity: fraction of steps verified to agree before the first
+        # divergence.  Steps after the divergence were never compared and are
+        # not counted as agreeing.
         n_total = len(all_steps)
-        n_agree = n_total - len(divergences)
-        similarity = n_agree / n_total if n_total > 0 else 1.0
+        similarity = agreed_steps / n_total if n_total > 0 else 1.0
 
         if divergences:
             summary = (

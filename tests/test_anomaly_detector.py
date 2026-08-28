@@ -525,3 +525,52 @@ class TestEpochReplayerAnomalyScan:
         signals = replayer.anomaly_scan(bundle, z_threshold=100.0)
         timing = [s for s in signals if s.metric_name == "timing_zscore"]
         assert timing == []
+
+
+# ---------------------------------------------------------------------------
+# Regression: same-valued intervals on different pairs (#code-review)
+# ---------------------------------------------------------------------------
+
+
+class TestSameIntervalValueAttribution:
+    def test_same_interval_value_on_two_ranks_reports_both(self) -> None:
+        """Two (prev, curr) pairs with an identical outlier interval must both
+        be reported and attributed to their own steps — a value-keyed index
+        would collapse them into one, mis-attributed signal."""
+        events = [
+            # Rank 0: six 1000 ns intervals, then one 10000 ns outlier.
+            _record(rank=0, step=s, timestamp_ns=1000 * s) for s in range(1, 8)
+        ] + [_record(rank=0, step=8, timestamp_ns=17000)] + [
+            # Rank 1: identical pattern, so the outlier interval value repeats.
+            _record(rank=1, step=s, timestamp_ns=1000 * s) for s in range(1, 8)
+        ] + [_record(rank=1, step=8, timestamp_ns=17000)]
+
+        signals = [
+            s for s in StatisticalAnomalyDetector(z_threshold=2.0).detect(events)
+            if s.metric_name == "timing_zscore"
+        ]
+
+        assert len(signals) == 2
+        assert {s.rank for s in signals} == {0, 1}
+        assert all(s.step == 8 for s in signals)
+
+    def test_same_interval_value_within_one_rank_reports_each_step(self) -> None:
+        """Two identical outlier gaps inside one rank must attribute signals
+        to their respective current events, not to the same pair twice."""
+        events = [
+            # Steps 1-9: uniform 1000 ns cadence...
+            _record(rank=0, step=s, timestamp_ns=1000 * s) for s in range(1, 10)
+        ] + [
+            # ...then two identical 50000 ns outlier gaps (Z ~= 2.02).
+            _record(rank=0, step=10, timestamp_ns=59_000),
+            _record(rank=0, step=11, timestamp_ns=60_000),
+            _record(rank=0, step=12, timestamp_ns=110_000),
+        ]
+
+        signals = [
+            s for s in StatisticalAnomalyDetector(z_threshold=1.5).detect(events)
+            if s.metric_name == "timing_zscore"
+        ]
+
+        assert len(signals) == 2
+        assert {s.step for s in signals} == {10, 12}
