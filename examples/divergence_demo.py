@@ -25,7 +25,6 @@ import tempfile
 from pathlib import Path
 
 from train_replay.collector.flight_recorder import CollectiveEvent
-from train_replay.graph.builder import build_from_events
 from train_replay.replay.replayer import EpochReplayer
 from train_replay.replay.types import DivergenceReport
 
@@ -128,10 +127,9 @@ def main() -> None:
         baseline_dump = write_dump(baseline_events, Path(tmp) / "baseline.pkl")
         candidate_dump = write_dump(candidate_events, Path(tmp) / "candidate.pkl")
 
-        # The causal graph is the standard EpochReplayer construction; replay_diff
-        # compares the two dumps' action streams directly.
-        graph = build_from_events(baseline_events)
-        replayer = EpochReplayer(graph)
+        # Diffing doesn't need the causal graph, so construct the replayer
+        # without one; replay_diff compares the two dumps' action streams.
+        replayer = EpochReplayer()
 
         print("Differential divergence replay")
         print(f"  baseline:  {baseline_dump.name} ({len(baseline_events)} events)")

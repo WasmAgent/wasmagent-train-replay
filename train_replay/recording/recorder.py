@@ -7,6 +7,7 @@ from .evidence import AEPRecord, EpochEvidenceBundle
 from .modes import (
     EscalationSignal,
     RecordingMode,
+    RecordingPolicy,
     RiskContext,
     SideEffectClass,
     compile_recording_policy,
@@ -36,15 +37,7 @@ class EpochRecorder:
         ctx = risk_override or RiskContext(
             side_effect_class=_collective_side_effect(evt.collective_type)
         )
-        policy = compile_recording_policy(ctx)
-        self._bundle.actions.append(AEPRecord(
-            action_id=f"r{evt.rank}:seq{evt.sequence_id}",
-            rank=evt.rank,
-            step=evt.sequence_id,
-            collective_type=evt.collective_type,
-            recording_mode=policy.mode,
-            timestamp_ns=evt.start_time_ns,
-        ))
+        self._append_record(evt, compile_recording_policy(ctx))
 
     def record_with_escalation(
         self, event: CollectiveEvent, escalation: EscalationSignal
@@ -52,14 +45,18 @@ class EpochRecorder:
         ctx = RiskContext(
             side_effect_class=_collective_side_effect(event.collective_type)
         )
-        policy = compile_recording_policy(ctx, escalation=escalation)
+        self._append_record(
+            event, compile_recording_policy(ctx, escalation=escalation)
+        )
+
+    def _append_record(self, evt: CollectiveEvent, policy: RecordingPolicy) -> None:
         self._bundle.actions.append(AEPRecord(
-            action_id=f"r{event.rank}:seq{event.sequence_id}",
-            rank=event.rank,
-            step=event.sequence_id,
-            collective_type=event.collective_type,
+            action_id=f"r{evt.rank}:seq{evt.sequence_id}",
+            rank=evt.rank,
+            step=evt.sequence_id,
+            collective_type=evt.collective_type,
             recording_mode=policy.mode,
-            timestamp_ns=event.start_time_ns,
+            timestamp_ns=evt.start_time_ns,
         ))
 
     def escalate_rank(self, rank: int) -> None:
