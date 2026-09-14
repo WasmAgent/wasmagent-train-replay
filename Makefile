@@ -1,7 +1,7 @@
 .PHONY: install test lint typecheck demo clean
 
 install:
-	pip install -e ".[dev]"
+	uv sync --frozen --extra dev
 
 test:
 	pytest tests/ -v --cov=train_replay --cov-report=term-missing

@@ -35,7 +35,7 @@ from any epoch. Consumes PyTorch Flight Recorder dumps and profiler hooks.
 | Gateway-level HTTP evidence (Proxy-Wasm) | `wasmagent-proxy` |
 | Enterprise audit report, regulatory mapping | `open-agent-audit` |
 | Trust Passport specification and product | `open-agent-audit` (`@openagentaudit/passport`) |
-| AgentBOM / MCP Posture specifications | `agent-trust-infra` |
+| AgentBOM / MCP Posture specifications | `wasmagent-protocol` (canonical schemas); `agentbom` (implementation) — `agent-trust-infra` is archived |
 | Evidence admission score, training-data pipeline | `trace-pipeline` |
 | Dynamic evaluation protocol | `fresharena` |
 
