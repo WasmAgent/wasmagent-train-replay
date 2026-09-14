@@ -3,16 +3,28 @@
 > Field-by-field reference for every record type that flows through the pipeline.
 > Types are Python type annotations as they appear in the source dataclasses.
 
-This is the canonical schema and wire-format reference. The implementation does
-not define a protobuf, msgpack, or custom binary frame: PyTorch Flight Recorder
-input arrives as a Python pickle byte stream, tensor events are in-process
-dataclasses, and AEP evidence is converted to deterministic UTF-8 JSON bytes by
+This is the repo-local schema and wire-format reference for
+`wasmagent-train-replay`. The implementation does not define a protobuf,
+msgpack, or custom binary frame: PyTorch Flight Recorder input arrives as a
+Python pickle byte stream, tensor events are in-process dataclasses, and AEP
+evidence is converted to deterministic UTF-8 JSON bytes by
 `EpochEvidenceBundle.canonical_bytes()` before hashing and signing. Bundle
 persistence uses `EpochEvidenceBundle.to_json()` and `to_cbor()`; the planned
 auditor export package is specified in
-[export-command-design.md](export-command-design.md). For how these records are
-produced and consumed see [architecture.md](architecture.md); for the
-surrounding CLI see [cli-reference.md](cli-reference.md).
+[export-command-design.md](export-command-design.md).
+
+> **Boundary (TR-3):** the canonical cross-repo AEP/compliance schemas are owned
+> by [`WasmAgent/wasmagent-protocol`](https://github.com/WasmAgent/wasmagent-protocol);
+> this repo no longer declares a dependency on `wasmagent-protocol` and never
+> imports it. `EpochEvidenceBundle` is a single-consumer, repo-local envelope
+> around repo-local `AEPRecord` types (`train-aep/v0.1`). If a second consumer
+> adopts it, or if it starts embedding canonical AEP records, the embedded
+> record must validate against the canonical protocol and this boundary note
+> must be updated.
+
+For how these records are produced and consumed see
+[architecture.md](architecture.md); for the surrounding CLI see
+[cli-reference.md](cli-reference.md).
 
 All structs in this document are Python dataclasses in the `train_replay`
 package. Field names below are source-level names, and any on-disk
